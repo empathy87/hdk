@@ -1,7 +1,7 @@
 import re
 from collections.abc import Iterable, Iterator
 
-from hdk.assembly.syntax import AInstruction, CInstruction, LabelDeclaration
+from hdk.assembly.syntax import AInstruction, CInstruction, Label
 
 
 def remove_comments(line: str) -> str:
@@ -37,27 +37,27 @@ def preprocess(line: str) -> str:
     return line
 
 
-Statement = LabelDeclaration | AInstruction | CInstruction
+Instruction = Label | AInstruction | CInstruction
 
 
-def parse(instruction: str) -> Statement:
+def parse(instruction: str) -> Instruction:
     """Parses a symbolic instruction into an object.
 
     >>> parse('@i')
     AInstruction(symbol='i')
     >>> parse('(LOOP)')
-    LabelDeclaration(symbol='LOOP')
+    Label(symbol='LOOP')
     >>> parse('M=M+1')
-    CInstruction(computation='M+1', destination='M', jump=None)
+    CInstruction(comp='M+1', dest='M', jump=None)
     >>> parse('D;JGT')
-    CInstruction(computation='D', destination=None, jump='JGT')
+    CInstruction(comp='D', dest=None, jump='JGT')
     >>> parse('M=M+1;JGT')
-    CInstruction(computation='M+1', destination='M', jump='JGT')
+    CInstruction(comp='M+1', dest='M', jump='JGT')
     """
     if instruction.startswith("@"):
         return AInstruction(instruction[1:])
     if instruction.startswith("(") and instruction.endswith(")"):
-        return LabelDeclaration(instruction[1:-1])
+        return Label(instruction[1:-1])
 
     semicolon_count = instruction.count(";")
     equal_sign_count = instruction.count("=")
@@ -74,7 +74,7 @@ def parse(instruction: str) -> Statement:
     )
 
 
-def parse_code(lines: Iterable[str]) -> Iterator[Statement]:
+def parse_code(lines: Iterable[str]) -> Iterator[Instruction]:
     """Parses lines of source code into symbolic instruction objects."""
     for line_num, line in enumerate(lines):
         instruction = preprocess(line)

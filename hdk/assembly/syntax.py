@@ -4,7 +4,7 @@ from typing import ClassVar
 
 
 @dataclass(frozen=True)
-class LabelDeclaration:
+class Label:
     symbol: str
 
     def __post_init__(self):
