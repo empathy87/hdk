@@ -14,12 +14,12 @@ class SymbolTable(collections.UserDict):
     }
 
     def __init__(self):
-        self._next_variable_location = 16
         super().__init__(self._predefined_symbols)
+        self._last_variable_location = 15
 
     def map_variable(self, symbol: str) -> int:
         if symbol in self.data:
             raise ValueError(f"Variable name {symbol!r} is already in use.")
-        self.data[symbol] = self._next_variable_location
-        self._next_variable_location += 1
-        return self.data[symbol]
+        self._last_variable_location += 1
+        self.data[symbol] = self._last_variable_location
+        return self._last_variable_location

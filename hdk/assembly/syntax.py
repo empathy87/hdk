@@ -28,7 +28,7 @@ class AInstruction:
 
 @dataclass(frozen=True)
 class CInstruction:
-    _allowed_destinations: ClassVar[set[str | None]] = {
+    _allowed_dest: ClassVar[set[str | None]] = {
         None,
         "M",
         "D",
@@ -38,7 +38,7 @@ class CInstruction:
         "AD",
         "ADM",
     }
-    _allowed_computations: ClassVar[set[str | None]] = {
+    _allowed_comp: ClassVar[set[str | None]] = {
         "0",
         "1",
         "-1",
@@ -68,7 +68,7 @@ class CInstruction:
         "D&M",
         "D|M",
     }
-    _allowed_jumps: ClassVar[set[str | None]] = {
+    _allowed_jump: ClassVar[set[str | None]] = {
         None,
         "JGT",
         "JEQ",
@@ -79,17 +79,17 @@ class CInstruction:
         "JMP",
     }
 
-    computation: str
-    destination: str | None = None
+    comp: str
+    dest: str | None = None
     jump: str | None = None
 
     def __post_init__(self):
         cls = self.__class__
-        if self.destination not in cls._allowed_destinations:
-            raise ValueError(f"Wrong dest {self.destination!r} for C-Instruction.")
-        if self.computation not in cls._allowed_computations:
-            raise ValueError(f"Wrong comp {self.computation!r} for C-Instruction.")
-        if self.jump not in cls._allowed_jumps:
+        if self.dest not in cls._allowed_dest:
+            raise ValueError(f"Wrong dest {self.dest!r} for C-Instruction.")
+        if self.comp not in cls._allowed_comp:
+            raise ValueError(f"Wrong comp {self.comp!r} for C-Instruction.")
+        if self.jump not in cls._allowed_jump:
             raise ValueError(f"Wrong jump {self.jump!r} for C-Instruction.")
 
 

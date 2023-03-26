@@ -1,7 +1,7 @@
 import re
 from collections.abc import Iterable, Iterator
 
-from hdk.assembly.instructions import AInstruction, CInstruction, LabelDeclaration
+from hdk.assembly.syntax import AInstruction, CInstruction, LabelDeclaration
 
 
 def remove_comments(line: str) -> str:
@@ -37,10 +37,10 @@ def preprocess(line: str) -> str:
     return line
 
 
-_T = LabelDeclaration | AInstruction | CInstruction
+Statement = LabelDeclaration | AInstruction | CInstruction
 
 
-def parse(instruction: str) -> _T:
+def parse(instruction: str) -> Statement:
     """Parses a symbolic instruction into an object.
 
     >>> parse('@i')
@@ -51,6 +51,8 @@ def parse(instruction: str) -> _T:
     CInstruction(computation='M+1', destination='M', jump=None)
     >>> parse('D;JGT')
     CInstruction(computation='D', destination=None, jump='JGT')
+    >>> parse('M=M+1;JGT')
+    CInstruction(computation='M+1', destination='M', jump='JGT')
     """
     if instruction.startswith("@"):
         return AInstruction(instruction[1:])
@@ -66,18 +68,19 @@ def parse(instruction: str) -> _T:
 
     parts = re.split("=|;", instruction)
     return CInstruction(
-        computation=parts[1] if equal_sign_count else parts[0],
-        destination=parts[0] if equal_sign_count else None,
+        comp=parts[1] if equal_sign_count else parts[0],
+        dest=parts[0] if equal_sign_count else None,
         jump=parts[-1] if semicolon_count else None,
     )
 
 
-def parse_code(lines: Iterable[str]) -> Iterator[_T]:
+def parse_code(lines: Iterable[str]) -> Iterator[Statement]:
     """Parses lines of source code into symbolic instruction objects."""
-    line_num = 0
-    for line in lines:
-        line_num += 1
+    for line_num, line in enumerate(lines):
         instruction = preprocess(line)
         if len(instruction) == 0:
             continue
-        yield parse(instruction)
+        try:
+            yield parse(instruction)
+        except ValueError as e:
+            raise ValueError(f"Cannot parse line {line_num  + 1}.") from e
