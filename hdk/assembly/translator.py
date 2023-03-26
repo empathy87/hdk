@@ -36,18 +36,6 @@ _COMP_TRANSLATION_TABLE = {
     "D&M": "1000000",
     "D|M": "1010101",
 }
-
-_DEST_TRANSLATION_TABLE = {
-    None: "000",
-    "M": "001",
-    "D": "010",
-    "DM": "011",
-    "A": "100",
-    "AM": "101",
-    "AD": "110",
-    "ADM": "111",
-}
-
 _JMP_TRANSLATION_TABLE = {
     None: "000",
     "JGT": "001",
@@ -104,6 +92,17 @@ def translate_a_instruction(a: AInstruction, symbols: SymbolTable) -> str:
     return "0" + _convert_to_binary(value, 15)
 
 
+def _translate_dest(dest):
+    """Translates destination into binary code.
+
+    >>> _translate_dest('AM')
+    '101'
+    """
+    if dest is None:
+        return "000"
+    return f"{int('A' in dest)}{int('D' in dest)}{int('M' in dest)}"
+
+
 def translate_c_instruction(c: CInstruction) -> str:
     """Translates C-Instruction into binary code
 
@@ -113,7 +112,7 @@ def translate_c_instruction(c: CInstruction) -> str:
     return (
         "111"
         + _COMP_TRANSLATION_TABLE[c.comp]
-        + _DEST_TRANSLATION_TABLE[c.dest]
+        + _translate_dest(c.dest)
         + _JMP_TRANSLATION_TABLE[c.jump]
     )
 

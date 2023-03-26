@@ -1,5 +1,6 @@
 import re
 from collections.abc import Iterable, Iterator
+from pathlib import Path
 
 from hdk.assembly.syntax import AInstruction, CInstruction, Label
 
@@ -74,7 +75,7 @@ def parse(instruction: str) -> Instruction:
     )
 
 
-def parse_code(lines: Iterable[str]) -> Iterator[Instruction]:
+def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
     """Parses lines of source code into symbolic instruction objects."""
     for line_num, line in enumerate(lines):
         instruction = preprocess(line)
@@ -84,3 +85,11 @@ def parse_code(lines: Iterable[str]) -> Iterator[Instruction]:
             yield parse(instruction)
         except ValueError as e:
             raise ValueError(f"Cannot parse line {line_num  + 1}.") from e
+
+
+def parse_source_file(path: Path) -> Iterator[Instruction]:
+    def _file_lines() -> Iterator[str]:
+        with open(path) as file:
+            yield from file
+
+    return parse_source_code(_file_lines())

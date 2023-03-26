@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 from dataclasses import dataclass
 from typing import ClassVar
 
@@ -28,16 +29,6 @@ class AInstruction:
 
 @dataclass(frozen=True)
 class CInstruction:
-    _allowed_dest: ClassVar[set[str | None]] = {
-        None,
-        "M",
-        "D",
-        "DM",
-        "A",
-        "AM",
-        "AD",
-        "ADM",
-    }
     _allowed_comp: ClassVar[set[str | None]] = {
         "0",
         "1",
@@ -83,9 +74,18 @@ class CInstruction:
     dest: str | None = None
     jump: str | None = None
 
+    @staticmethod
+    def _is_dest_correct(dest):
+        if dest is None:
+            return True
+        counts = Counter(list(dest))
+        other_symbols = set(counts.keys()) - set(list("ADM"))
+        max_count = max(counts.values())
+        return len(other_symbols) == 0 and max_count == 1
+
     def __post_init__(self):
         cls = self.__class__
-        if self.dest not in cls._allowed_dest:
+        if not self._is_dest_correct(self.dest):
             raise ValueError(f"Wrong dest {self.dest!r} for C-Instruction.")
         if self.comp not in cls._allowed_comp:
             raise ValueError(f"Wrong comp {self.comp!r} for C-Instruction.")
