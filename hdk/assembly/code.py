@@ -111,10 +111,9 @@ def translate_c_instruction(c: CInstruction) -> str:
     )
 
 
-def translate(instructions: Iterable[Instruction]) -> Iterable[str]:
+def _first_pass(instructions) -> tuple[list[AInstruction | CInstruction], SymbolTable]:
     symbol_table = SymbolTable()
     ac_instructions: list[AInstruction | CInstruction] = []
-    # first pass, fill symbol table with labels
     for instruction in instructions:
         if isinstance(instruction, Label):
             symbol = instruction.symbol
@@ -123,7 +122,11 @@ def translate(instructions: Iterable[Instruction]) -> Iterable[str]:
             symbol_table[symbol] = len(ac_instructions)
         else:
             ac_instructions.append(instruction)
-    # second pass
+    return ac_instructions, symbol_table
+
+
+def translate(instructions: Iterable[Instruction]) -> Iterable[str]:
+    ac_instructions, symbol_table = _first_pass(instructions)
     for instruction in ac_instructions:
         if isinstance(instruction, AInstruction):
             yield translate_a_instruction(instruction, symbol_table)
