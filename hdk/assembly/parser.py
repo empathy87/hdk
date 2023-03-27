@@ -1,16 +1,15 @@
+"""Unpacks instructions into their underlying fields."""
 import re
-from collections.abc import Iterable, Iterator
-from pathlib import Path
 
 from hdk.assembly.syntax import AInstruction, CInstruction, Label
 
 
-def remove_comments(line: str) -> str:
+def remove_comment(line: str) -> str:
     """Removes comment from a text line.
 
-    >>> remove_comments('// The whole line is a comment')
+    >>> remove_comment('// The whole line is a comment')
     ''
-    >>> remove_comments('Command // comment')
+    >>> remove_comment('Command // comment')
     'Command '
     """
     if "//" not in line:
@@ -33,7 +32,7 @@ def preprocess(line: str) -> str:
     >>> preprocess('    D = D - M;JMP  // continue a loop')
     'D=D-M;JMP'
     """
-    line = remove_comments(line)
+    line = remove_comment(line)
     line = remove_whitespaces(line)
     return line
 
@@ -73,23 +72,3 @@ def parse(instruction: str) -> Instruction:
         dest=parts[0] if equal_sign_count else None,
         jump=parts[-1] if semicolon_count else None,
     )
-
-
-def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
-    """Parses lines of source code into symbolic instruction objects."""
-    for line_num, line in enumerate(lines):
-        instruction = preprocess(line)
-        if len(instruction) == 0:
-            continue
-        try:
-            yield parse(instruction)
-        except ValueError as e:
-            raise ValueError(f"Cannot parse line {line_num  + 1}.") from e
-
-
-def parse_source_file(path: Path) -> Iterator[Instruction]:
-    def _file_lines() -> Iterator[str]:
-        with open(path) as file:
-            yield from file
-
-    return parse_source_code(_file_lines())

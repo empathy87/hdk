@@ -9,8 +9,8 @@ class Label:
     symbol: str
 
     def __post_init__(self):
-        if not _is_valid_symbol(self.symbol):
-            raise ValueError(f"Incorrect symbol {self.symbol!r} for Label.")
+        if not _is_symbol_valid(self.symbol):
+            raise ValueError(f"Invalid symbol {self.symbol!r} for Label.")
 
 
 @dataclass(frozen=True)
@@ -22,7 +22,7 @@ class AInstruction:
         return self.symbol.isdecimal()
 
     def __post_init__(self):
-        if self.is_constant or _is_valid_symbol(self.symbol):
+        if self.is_constant or _is_symbol_valid(self.symbol):
             return
         raise ValueError(f"Incorrect symbol {self.symbol!r} for A-Instruction.")
 
@@ -79,9 +79,9 @@ class CInstruction:
         if dest is None:
             return True
         counts = Counter(list(dest))
-        other_symbols = set(counts.keys()) - set(list("ADM"))
-        max_count = max(counts.values())
-        return len(other_symbols) == 0 and max_count == 1
+        wrong_chars = set(counts.keys()) - set(list("ADM"))
+        max_char_count = max(counts.values())
+        return len(wrong_chars) == 0 and max_char_count == 1
 
     def __post_init__(self):
         cls = self.__class__
@@ -93,17 +93,17 @@ class CInstruction:
             raise ValueError(f"Wrong jump {self.jump!r} for C-Instruction.")
 
 
-def _is_valid_symbol(symbol: str) -> bool:
+def _is_symbol_valid(symbol: str) -> bool:
     """Checks if the string is valid symbol.
 
     A symbol can be any sequence of letters, digits, underscores (_), dot (.),
     dollar sign ($), and colon (:) that does not begin with a digit.
 
-    >>> _is_valid_symbol('_R0$:56.')
+    >>> _is_symbol_valid('_R0$:56.')
     True
-    >>> _is_valid_symbol('5A')
+    >>> _is_symbol_valid('5A')
     False
-    >>> _is_valid_symbol('A97^')
+    >>> _is_symbol_valid('A97^')
     False
     """
     if len(symbol) == 0 or symbol[0].isdigit():

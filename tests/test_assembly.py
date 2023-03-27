@@ -27,4 +27,4 @@ def test_compile_add_programs(test_files):
         "RectL.asm",
     ]
     for program in programs:
-        assembler.compile_file(test_files / program)
+        assembler.translate_program(test_files / program)
