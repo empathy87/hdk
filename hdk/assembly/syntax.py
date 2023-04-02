@@ -1,3 +1,4 @@
+"""Dataclasses that represent symbolic instructions underlying fields."""
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -6,6 +7,8 @@ from typing import ClassVar
 
 @dataclass(frozen=True)
 class Label:
+    """Represents a Label symbolic assembly instruction."""
+
     symbol: str
 
     def __post_init__(self):
@@ -15,6 +18,8 @@ class Label:
 
 @dataclass(frozen=True)
 class AInstruction:
+    """Represents an A- symbolic assembly instruction."""
+
     symbol: str
 
     @property
@@ -29,6 +34,8 @@ class AInstruction:
 
 @dataclass(frozen=True)
 class CInstruction:
+    """Represents a C- symbolic assembly instruction."""
+
     _allowed_comp: ClassVar[set[str | None]] = {
         "0",
         "1",
@@ -94,7 +101,7 @@ class CInstruction:
 
 
 def _is_symbol_valid(symbol: str) -> bool:
-    """Checks if the string is valid symbol.
+    """Checks if the string is a valid symbol.
 
     A symbol can be any sequence of letters, digits, underscores (_), dot (.),
     dollar sign ($), and colon (:) that does not begin with a digit.
@@ -109,3 +116,7 @@ def _is_symbol_valid(symbol: str) -> bool:
     if len(symbol) == 0 or symbol[0].isdigit():
         return False
     return re.fullmatch(r"[\w_$\.:]+", symbol) is not None
+
+
+# An alias for type-hints representing any symbolic assembly instruction.
+Instruction = Label | AInstruction | CInstruction

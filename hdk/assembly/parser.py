@@ -1,7 +1,7 @@
-"""Unpacks instructions into their underlying fields."""
+"""Unpacks symbolic instructions into their underlying fields."""
 import re
 
-from hdk.assembly.syntax import AInstruction, CInstruction, Label
+from hdk.assembly.syntax import AInstruction, CInstruction, Instruction, Label
 
 
 def remove_comment(line: str) -> str:
@@ -37,11 +37,8 @@ def preprocess(line: str) -> str:
     return line
 
 
-Instruction = Label | AInstruction | CInstruction
-
-
 def parse(instruction: str) -> Instruction:
-    """Parses a symbolic instruction into an object.
+    """Parses a symbolic instruction into their underlying fields represented.
 
     >>> parse('@i')
     AInstruction(symbol='i')
