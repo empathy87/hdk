@@ -2,7 +2,7 @@
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, TypeAlias
 
 
 @dataclass(frozen=True)
@@ -36,7 +36,7 @@ class AInstruction:
 class CInstruction:
     """Represents a C- symbolic assembly instruction."""
 
-    _allowed_comp: ClassVar[set[str | None]] = {
+    _allowed_comp: ClassVar[set[str]] = {
         "0",
         "1",
         "-1",
@@ -118,5 +118,6 @@ def _is_symbol_valid(symbol: str) -> bool:
     return re.fullmatch(r"[\w_$\.:]+", symbol) is not None
 
 
-# An alias for type-hints representing any symbolic assembly instruction.
-Instruction = Label | AInstruction | CInstruction
+# An alias for type-hints representing symbolic assembly instructions.
+Command: TypeAlias = AInstruction | CInstruction
+Instruction: TypeAlias = Label | Command

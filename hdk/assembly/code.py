@@ -1,8 +1,9 @@
 """Translates instruction objects into corresponding binary values."""
 import collections
 from collections.abc import Iterable
+from typing import NamedTuple
 
-from hdk.assembly.syntax import AInstruction, CInstruction, Instruction, Label
+from hdk.assembly.syntax import AInstruction, CInstruction, Command, Instruction, Label
 
 _COMP_TRANSLATION_TABLE = {
     "0": "0101010",
@@ -131,9 +132,12 @@ def translate_c_instruction(c: CInstruction) -> str:
     )
 
 
-def _do_first_pass(
-    instructions: Iterable[Instruction],
-) -> tuple[list[AInstruction | CInstruction], SymbolTable]:
+class _FirstPassResult(NamedTuple):
+    ac_instructions: list[Command]
+    symbol_table: SymbolTable
+
+
+def _do_first_pass(instructions: Iterable[Instruction]) -> _FirstPassResult:
     """Performs the first pass of the translation process and builds the symbol table.
 
     In the first pass, the assembler reads the code from start to end, builds a symbol
@@ -147,7 +151,7 @@ def _do_first_pass(
         Label instructions), and the second element is a symbol table.
     """
     symbol_table = SymbolTable()
-    ac_instructions: list[AInstruction | CInstruction] = []
+    ac_instructions: list[Command] = []
     for instruction in instructions:
         if isinstance(instruction, Label):
             symbol = instruction.symbol
@@ -156,7 +160,7 @@ def _do_first_pass(
             symbol_table[symbol] = len(ac_instructions)
         else:
             ac_instructions.append(instruction)
-    return ac_instructions, symbol_table
+    return _FirstPassResult(ac_instructions, symbol_table)
 
 
 def translate(instructions: Iterable[Instruction]) -> Iterable[str]:
