@@ -1,6 +1,6 @@
 """Translates instruction objects into corresponding binary values."""
 import collections
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator
 from typing import NamedTuple
 
 from hdk.assembly.syntax import AInstruction, CInstruction, Command, Instruction, Label
@@ -163,7 +163,7 @@ def _do_first_pass(instructions: Iterable[Instruction]) -> _FirstPassResult:
     return _FirstPassResult(ac_instructions, symbol_table)
 
 
-def translate(instructions: Iterable[Instruction]) -> Iterable[str]:
+def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
     """Translates symbolic instructions into 16-bit codes represented as strings."""
     ac_instructions, symbol_table = _do_first_pass(instructions)
     for instruction in ac_instructions:
