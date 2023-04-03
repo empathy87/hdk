@@ -47,7 +47,7 @@ _JMP_TRANSLATION_TABLE = {
 
 
 class SymbolTable(collections.UserDict):
-    """Manages the symbol table."""
+    """Manages a Hack program's symbol table."""
 
     _predefined_symbols = {
         **{f"R{i}": i for i in range(16)},
@@ -65,7 +65,7 @@ class SymbolTable(collections.UserDict):
         self._last_variable_location = 15
 
     def map_variable(self, name: str) -> int:
-        """Assigns a variable an address in the Hack RAM.
+        """Assigns a variable to the address in the Hack RAM.
 
         Variables are mapped to consecutive RAM locations as they are first
         encountered in a program, starting at RAM 16.
@@ -74,7 +74,7 @@ class SymbolTable(collections.UserDict):
             name: The variable symbol.
 
         Returns:
-            Integer address in the Hack RAM where the variable value is located.
+            An integer address in the Hack RAM where the variable value is stored.
         """
         if name in self.data:
             raise ValueError(f"Variable name {name!r} is already in use.")
@@ -86,8 +86,8 @@ class SymbolTable(collections.UserDict):
 def translate_a_instruction(a: AInstruction, symbols: SymbolTable) -> str:
     """Translates an A-Instruction into the binary code using the symbol table.
 
-    The symbol table contains the label symbols filled in the first pass. The variable
-    symbols are handled in this function.
+    The symbol table contains the label symbols filled during the first pass.
+    The variable symbols are handled in this function.
 
     Args:
         a: The A-Instruction object.
@@ -107,7 +107,7 @@ def translate_a_instruction(a: AInstruction, symbols: SymbolTable) -> str:
 
 
 def _translate_dest(dest: str | None) -> str:
-    """Translates destination into the corresponding binary code.
+    """Translates a destination field into the corresponding binary code.
 
     >>> _translate_dest('AM')
     '101'
@@ -131,20 +131,20 @@ def translate_c_instruction(c: CInstruction) -> str:
     )
 
 
-def _first_pass(
+def _do_first_pass(
     instructions: Iterable[Instruction],
 ) -> tuple[list[AInstruction | CInstruction], SymbolTable]:
     """Performs the first pass of the translation process and builds the symbol table.
 
-    In the first pass, the assembler reads the code from start to end builds a symbol
+    In the first pass, the assembler reads the code from start to end, builds a symbol
     table, adds all the label symbols into the table, and generates no code.
 
     Args:
         instructions: Symbolic assembly instructions.
 
     Returns:
-        A tuple where the first element is a list of A- and C-Instructions (without)
-        Label instructions, and the second element is a symbol table.
+        A tuple where the first element is a list of A- and C-Instructions (without
+        Label instructions), and the second element is a symbol table.
     """
     symbol_table = SymbolTable()
     ac_instructions: list[AInstruction | CInstruction] = []
@@ -161,7 +161,7 @@ def _first_pass(
 
 def translate(instructions: Iterable[Instruction]) -> Iterable[str]:
     """Translates symbolic instructions into 16-bit codes represented as strings."""
-    ac_instructions, symbol_table = _first_pass(instructions)
+    ac_instructions, symbol_table = _do_first_pass(instructions)
     for instruction in ac_instructions:
         if isinstance(instruction, AInstruction):
             yield translate_a_instruction(instruction, symbol_table)

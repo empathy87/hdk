@@ -1,3 +1,4 @@
+"""Tests the Hack assembler."""
 import filecmp
 import shutil
 from pathlib import Path
@@ -9,16 +10,18 @@ from hdk.assembly import assembler
 
 
 @fixture
-def test_source_files(tmpdir, request) -> Path:
-    tmpdir = Path(tmpdir) / "test_files"
+def tmpdir_with_programs(tmpdir, request) -> Path:
+    """Returns a path to the directory with the source code and target files."""
+    path = Path(tmpdir) / "programs"
     test_path = Path(request.module.__file__)
     test_data_path = test_path.parents[0] / (test_path.stem + "_data")
     if test_data_path.is_dir():
-        shutil.copytree(test_data_path, tmpdir)
-    return tmpdir
+        shutil.copytree(test_data_path, path)
+    return path
 
 
-def test_translate_correct_programs(test_source_files):
+def test_translate_correct_programs(tmpdir_with_programs):
+    """Tests that all correct program are translated as expected."""
     programs = [
         "Add",
         "Max",
@@ -29,27 +32,23 @@ def test_translate_correct_programs(test_source_files):
         "RectL",
     ]
     for program in programs:
-        assembly_file = test_source_files / (program + ".asm")
-        hack_file = test_source_files / (program + ".hack")
-        target_hack_file = test_source_files / (program + ".hack_target")
+        assembly_file = tmpdir_with_programs / (program + ".asm")
+        hack_file = tmpdir_with_programs / (program + ".hack")
+        target_hack_file = tmpdir_with_programs / (program + ".hack_target")
         assembler.translate_program(assembly_file)
         is_correct = filecmp.cmp(hack_file, target_hack_file, shallow=False)
         assert is_correct, f"Program {program} translation is incorrect"
 
 
 def test_translate_incorrect_program():
+    """Tests that the assembler raises an exception for a program with wrong syntax."""
+    program = """
+           D=M              // D = second number
+           @OUTPUT_D
+           0;JMP            // goto output_d
+        (OUTPUT_FIRST
+           @R0
+    """
     with pytest.raises(ValueError) as e:
-        list(
-            assembler.parse_source_code(
-                """
-               D=M              // D = second number
-               @OUTPUT_D
-               0;JMP            // goto output_d
-            (OUTPUT_FIRST
-               @R0
-           """.split(
-                    "\n"
-                )
-            )
-        )
+        list(assembler.parse_source_code(program.split("\n")))
     assert e.value.args[0] == "Cannot parse line 5."

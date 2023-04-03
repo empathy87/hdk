@@ -101,7 +101,7 @@ class CInstruction:
 
 
 def _is_symbol_valid(symbol: str) -> bool:
-    """Checks if the string is a valid symbol.
+    """Checks if a string is the valid symbol.
 
     A symbol can be any sequence of letters, digits, underscores (_), dot (.),
     dollar sign ($), and colon (:) that does not begin with a digit.

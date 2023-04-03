@@ -8,7 +8,7 @@ from hdk.assembly.syntax import Instruction
 
 
 def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
-    """Parses lines the of symbolic assembly source code into instruction objects."""
+    """Parses lines of the symbolic assembly source code into instruction objects."""
     for line_num, line in enumerate(lines):
         instruction = preprocess(line)
         if len(instruction) == 0:
@@ -19,27 +19,27 @@ def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
             raise ValueError(f"Cannot parse line {line_num  + 1}.") from e
 
 
-def parse_program(path: Path) -> Iterator[Instruction]:
-    """Parses the symbolic assembly program into instruction objects."""
+def parse_program(source_path: Path) -> Iterator[Instruction]:
+    """Parses a symbolic assembly program into instruction objects."""
 
     def _file_lines() -> Iterator[str]:
-        with open(path) as file:
+        with open(source_path) as file:
             yield from file
 
     return parse_source_code(_file_lines())
 
 
-def translate_program(source: Path) -> None:
-    """Translates Hack assembly program into executable Hack binary code.
+def translate_program(source_path: Path) -> None:
+    """Translates a Hack assembly program into executable Hack binary code.
 
     The generated code is written into a text file of the same name
     with .hack extension.
 
     Args:
-        source: The path to the source program supplied in a text file.
+        source_path: The path to the source program supplied in a text file.
     """
-    destination = source.parents[0] / (source.stem + ".hack")
-    instructions = parse_program(source)
+    destination = source_path.parents[0] / (source_path.stem + ".hack")
+    instructions = parse_program(source_path)
     with open(destination, "w") as file:
         for binary_instruction in code.translate(instructions):
             file.write(binary_instruction + "\n")

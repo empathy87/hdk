@@ -5,7 +5,7 @@ from hdk.assembly.syntax import AInstruction, CInstruction, Instruction, Label
 
 
 def remove_comment(line: str) -> str:
-    """Removes comment from a text line.
+    """Removes a comment from a text line.
 
     >>> remove_comment('// The whole line is a comment')
     ''
@@ -38,7 +38,7 @@ def preprocess(line: str) -> str:
 
 
 def parse(instruction: str) -> Instruction:
-    """Parses a symbolic instruction into their underlying fields represented.
+    """Parses a symbolic instruction into its underlying fields.
 
     >>> parse('@i')
     AInstruction(symbol='i')
