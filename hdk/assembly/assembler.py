@@ -30,13 +30,13 @@ def parse_program(source_path: Path) -> Iterator[Instruction]:
 
 
 def translate_program(source_path: Path) -> None:
-    """Translates a Hack assembly program into executable Hack binary code.
+    """Translates a Hack assembly program into the executable Hack binary code.
 
     The generated code is written into a text file of the same name
     with .hack extension.
 
     Args:
-        source_path: The path to the source program supplied in a text file.
+        source_path: A path to the source program text file.
     """
     destination = source_path.parents[0] / (source_path.stem + ".hack")
     instructions = parse_program(source_path)

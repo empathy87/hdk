@@ -72,10 +72,10 @@ class SymbolTable(collections.UserDict):
         encountered in a program, starting at RAM 16.
 
         Args:
-            name: The variable symbol.
+            name: A variable symbol.
 
         Returns:
-            An integer address in the Hack RAM where the variable value is stored.
+            The integer address of the Hack RAM where the variable value is stored.
         """
         if name in self.data:
             raise ValueError(f"Variable name {name!r} is already in use.")
@@ -91,11 +91,11 @@ def translate_a_instruction(a: AInstruction, symbols: SymbolTable) -> str:
     The variable symbols are handled in this function.
 
     Args:
-        a: The A-Instruction object.
-        symbols: The symbol table.
+        a: An A-Instruction object.
+        symbols: A symbol table.
 
     Returns:
-        The string that contains 16-bit instruction code.
+        A string that contains the 16-bit instruction code.
     """
     if a.is_constant:
         value = int(a.symbol)
