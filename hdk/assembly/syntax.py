@@ -1,4 +1,4 @@
-"""Dataclasses that represent symbolic instructions underlying fields."""
+"""Declares dataclasses that represent Hack assembly instructions underlying fields."""
 import re
 from collections import Counter
 from dataclasses import dataclass
@@ -18,7 +18,7 @@ class Label:
 
 @dataclass(frozen=True)
 class AInstruction:
-    """Represents an A- symbolic assembly instruction."""
+    """Represents an A-instruction in Hack assembly language."""
 
     symbol: str
 

@@ -1,4 +1,4 @@
-"""Translates instruction objects into corresponding binary values."""
+"""Provides functions to translate 'Instruction' objects into their binary values."""
 import collections
 from collections.abc import Iterable, Iterator
 from typing import NamedTuple
@@ -65,14 +65,14 @@ class SymbolTable(collections.UserDict):
         super().__init__(self._predefined_symbols)
         self._last_variable_location = 15
 
-    def map_variable(self, name: str) -> int:
-        """Assigns a variable to the address in the Hack RAM.
+    def assign_variable_address(self, name: str) -> int:
+        """Assigns a variable to the next available address in the Hack RAM.
 
         Variables are mapped to consecutive RAM locations as they are first
         encountered in a program, starting at RAM 16.
 
         Args:
-            name: A variable symbol.
+            name: A string representing variable name.
 
         Returns:
             The integer address of the Hack RAM where the variable value is stored.
@@ -80,12 +80,13 @@ class SymbolTable(collections.UserDict):
         if name in self.data:
             raise ValueError(f"Variable name {name!r} is already in use.")
         self._last_variable_location += 1
-        self.data[name] = self._last_variable_location
-        return self._last_variable_location
+        location = self._last_variable_location
+        self.data[name] = location
+        return location
 
 
 def translate_a_instruction(a: AInstruction, symbols: SymbolTable) -> str:
-    """Translates an A-Instruction into the binary code using the symbol table.
+    """Translates an A-Instruction into its 16-bit binary code using the symbol table.
 
     The symbol table contains the label symbols filled during the first pass.
     The variable symbols are handled in this function.
@@ -103,19 +104,23 @@ def translate_a_instruction(a: AInstruction, symbols: SymbolTable) -> str:
         if a.symbol in symbols:
             value = symbols[a.symbol]
         else:
-            value = symbols.map_variable(a.symbol)
-    return "0" + f"{value:b}".zfill(15)
+            value = symbols.assign_variable_address(a.symbol)
+    return format(value, "016b")
 
 
 def _translate_dest(dest: str | None) -> str:
-    """Translates a destination field into the corresponding binary code.
+    """Converts a destination field into its binary code.
 
     >>> _translate_dest('AM')
     '101'
     """
     if dest is None:
         return "000"
-    return f"{int('A' in dest)}{int('D' in dest)}{int('M' in dest)}"
+    a_bit = int("A" in dest)
+    d_bit = int("D" in dest)
+    m_bit = int("M" in dest)
+
+    return f"{a_bit}{d_bit}{m_bit}"
 
 
 def translate_c_instruction(c: CInstruction) -> str:
@@ -138,17 +143,16 @@ class _FirstPassResult(NamedTuple):
 
 
 def _do_first_pass(instructions: Iterable[Instruction]) -> _FirstPassResult:
-    """Performs the first pass of the translation process and builds the symbol table.
+    """Performs the first pass of the translation process and builds a symbol table.
 
-    In the first pass, the assembler reads the code from start to end, builds a symbol
-    table, adds all the label symbols into the table, and generates no code.
+    During this pass, the assembler reads the symbolic assembly code from beginning to
+    end, adds all the label symbols to the symbol table, and generates no code.
 
     Args:
-        instructions: Symbolic assembly instructions.
+        instructions: An iterable of symbolic assembly instructions.
 
     Returns:
-        A tuple where the first element is a list of A- and C-Instructions (without
-        Label instructions), and the second element is a symbol table.
+        A tuple containing a list of A- and C-Instructions, and the symbol table.
     """
     symbol_table = SymbolTable()
     ac_instructions: list[Command] = []

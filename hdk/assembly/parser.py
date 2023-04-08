@@ -12,9 +12,9 @@ def remove_comment(line: str) -> str:
     >>> remove_comment('Command // comment')
     'Command '
     """
-    if "//" not in line:
-        return line
-    return line[: line.index("//")]
+    if (comment_index := line.find("//")) != -1:
+        return line[:comment_index]
+    return line
 
 
 def remove_whitespaces(line: str) -> str:
@@ -23,11 +23,11 @@ def remove_whitespaces(line: str) -> str:
     >>> remove_whitespaces('    DM = A +1 ; JGZ ')
     'DM=A+1;JGZ'
     """
-    return re.sub(r"\s+", "", line, flags=re.UNICODE)
+    return re.sub(r"\s+", "", line)
 
 
 def preprocess(line: str) -> str:
-    """Preprocesses a text line of the source code.
+    """Preprocesses a line of source code by removing comments and whitespaces.
 
     >>> preprocess('    D = D - M;JMP  // continue a loop')
     'D=D-M;JMP'
