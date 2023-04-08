@@ -5,7 +5,7 @@ from typing import NamedTuple
 
 from hdk.assembly.syntax import AInstruction, CInstruction, Command, Instruction, Label
 
-_COMP_TRANSLATION_TABLE = {
+_COMP_BINARY_CODES = {
     "0": "0101010",
     "1": "0111111",
     "-1": "0111010",
@@ -35,7 +35,7 @@ _COMP_TRANSLATION_TABLE = {
     "D&M": "1000000",
     "D|M": "1010101",
 }
-_JMP_TRANSLATION_TABLE = {
+_JUMP_BINARY_CODES = {
     None: "000",
     "JGT": "001",
     "JEQ": "010",
@@ -47,10 +47,14 @@ _JMP_TRANSLATION_TABLE = {
 }
 
 
-class SymbolTable(collections.UserDict):
-    """Manages a Hack program's symbol table."""
+class HackSymbolTable(collections.UserDict):
+    """Manages a Hack program's symbol table.
 
-    _predefined_symbols = {
+    The symbol table is used to keep track of symbols (labels and variables)
+    encountered in the assembly code, and their corresponding memory locations.
+    """
+
+    _PREDEFINED_SYMBOLS = {
         **{f"R{i}": i for i in range(16)},
         "SP": 0,
         "LCL": 1,
@@ -62,7 +66,7 @@ class SymbolTable(collections.UserDict):
     }
 
     def __init__(self):
-        super().__init__(self._predefined_symbols)
+        super().__init__(self._PREDEFINED_SYMBOLS)
         self._last_variable_location = 15
 
     def assign_variable_address(self, name: str) -> int:
@@ -85,7 +89,7 @@ class SymbolTable(collections.UserDict):
         return location
 
 
-def translate_a_instruction(a: AInstruction, symbols: SymbolTable) -> str:
+def translate_a_instruction(a: AInstruction, symbols: HackSymbolTable) -> str:
     """Translates an A-Instruction into its 16-bit binary code using the symbol table.
 
     The symbol table contains the label symbols filled during the first pass.
@@ -111,8 +115,15 @@ def translate_a_instruction(a: AInstruction, symbols: SymbolTable) -> str:
 def _translate_dest(dest: str | None) -> str:
     """Converts a destination field into its binary code.
 
-    >>> _translate_dest('AM')
-    '101'
+    Args:
+        dest: An optional string representing the destination field of a C-Instruction.
+
+    Returns:
+        A string representing the binary code of the destination field.
+
+    Typical usage example:
+        >>> _translate_dest('AM')
+        '101'
     """
     if dest is None:
         return "000"
@@ -126,20 +137,27 @@ def _translate_dest(dest: str | None) -> str:
 def translate_c_instruction(c: CInstruction) -> str:
     """Translates a C-Instruction into the binary code.
 
-    >>> translate_c_instruction(CInstruction(comp="1", dest="M"))
-    '1110111111001000'
+    Args:
+        c: A C-Instruction object.
+
+    Returns:
+        A string that contains the 16-bit binary code for the instruction.
+
+    Typical usage example:
+        >>> translate_c_instruction(CInstruction(comp="1", dest="M"))
+        '1110111111001000'
     """
     return (
         "111"
-        + _COMP_TRANSLATION_TABLE[c.comp]
+        + _COMP_BINARY_CODES[c.comp]
         + _translate_dest(c.dest)
-        + _JMP_TRANSLATION_TABLE[c.jump]
+        + _JUMP_BINARY_CODES[c.jump]
     )
 
 
 class _FirstPassResult(NamedTuple):
-    ac_instructions: list[Command]
-    symbol_table: SymbolTable
+    commands: list[Command]
+    symbol_table: HackSymbolTable
 
 
 def _do_first_pass(instructions: Iterable[Instruction]) -> _FirstPassResult:
@@ -154,23 +172,30 @@ def _do_first_pass(instructions: Iterable[Instruction]) -> _FirstPassResult:
     Returns:
         A tuple containing a list of A- and C-Instructions, and the symbol table.
     """
-    symbol_table = SymbolTable()
-    ac_instructions: list[Command] = []
+    symbol_table = HackSymbolTable()
+    commands: list[Command] = []
     for instruction in instructions:
         if isinstance(instruction, Label):
             symbol = instruction.symbol
             if symbol in symbol_table:
                 raise ValueError(f"Label symbol {symbol!r} is already in use.")
-            symbol_table[symbol] = len(ac_instructions)
+            symbol_table[symbol] = len(commands)
         else:
-            ac_instructions.append(instruction)
-    return _FirstPassResult(ac_instructions, symbol_table)
+            commands.append(instruction)
+    return _FirstPassResult(commands, symbol_table)
 
 
 def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
-    """Translates symbolic instructions into 16-bit codes represented as strings."""
-    ac_instructions, symbol_table = _do_first_pass(instructions)
-    for instruction in ac_instructions:
+    """Translates symbolic instructions into 16-bit codes represented as strings.
+
+    Args:
+        instructions: An iterable of symbolic instructions.
+
+    Yields:
+        A string representation of the 16-bit code for each instruction.
+    """
+    commands, symbol_table = _do_first_pass(instructions)
+    for instruction in commands:
         if isinstance(instruction, AInstruction):
             yield translate_a_instruction(instruction, symbol_table)
         else:

@@ -1,71 +1,93 @@
-"""Unpacks symbolic instructions into their underlying fields."""
+"""Functions for parsing symbolic instructions into their underlying fields."""
 import re
 
 from hdk.assembly.syntax import AInstruction, CInstruction, Instruction, Label
 
 
 def remove_comment(line: str) -> str:
-    """Removes a comment from a text line.
+    """Removes any comments from a given line of assembly source code.
 
-    >>> remove_comment('// The whole line is a comment')
-    ''
-    >>> remove_comment('Command // comment')
-    'Command '
+    Args:
+        line: A line of code that may contain a comment.
+
+    Returns:
+        The line of code with any comment removed.
+
+    Typical usage example:
+        >>> remove_comment('// The whole line is a comment')
+        ''
+        >>> remove_comment('Command // comment')
+        'Command '
     """
-    if (comment_index := line.find("//")) != -1:
-        return line[:comment_index]
-    return line
+    return line.partition("//")[0]
 
 
 def remove_whitespaces(line: str) -> str:
-    """Removes all whitespaces from a text line.
+    """Removes all whitespace characters from a given line of assembly source code.
 
-    >>> remove_whitespaces('    DM = A +1 ; JGZ ')
-    'DM=A+1;JGZ'
+    Args:
+        line: A line of code that may contain whitespace characters.
+
+    Returns:
+        The line of code with all whitespace characters removed.
+
+    Typical usage example:
+        >>> remove_whitespaces('    DM = A +1 ; JGZ ')
+        'DM=A+1;JGZ'
     """
     return re.sub(r"\s+", "", line)
 
 
-def preprocess(line: str) -> str:
-    """Preprocesses a line of source code by removing comments and whitespaces.
+def clean_line(line: str) -> str:
+    """Removes comments and whitespace from a line of source code.
 
-    >>> preprocess('    D = D - M;JMP  // continue a loop')
-    'D=D-M;JMP'
+    Args:
+        line: A string representing a line of source code.
+
+    Returns:
+        The line of source code with comments and whitespace removed.
+
+    Typical usage example:
+        >>> clean_line('    D = D - M;JMP  // continue a loop')
+        'D=D-M;JMP'
     """
     line = remove_comment(line)
     line = remove_whitespaces(line)
     return line
 
 
-def parse(instruction: str) -> Instruction:
-    """Parses a symbolic instruction into its underlying fields.
+def parse_assembly_instruction(instruction_text: str) -> Instruction:
+    """Parses a symbolic Hack assembly instruction into its underlying fields.
 
-    >>> parse('@i')
-    AInstruction(symbol='i')
-    >>> parse('(LOOP)')
-    Label(symbol='LOOP')
-    >>> parse('M=M+1')
-    CInstruction(comp='M+1', dest='M', jump=None)
-    >>> parse('D;JGT')
-    CInstruction(comp='D', dest=None, jump='JGT')
-    >>> parse('M=M+1;JGT')
-    CInstruction(comp='M+1', dest='M', jump='JGT')
+    Args:
+        instruction_text: The symbolic instruction to be parsed.
+
+    Returns:
+        An instance of either AInstruction, CInstruction, or Label, representing
+        the parsed instruction.
+
+    Typical usage example:
+        >>> parse_assembly_instruction('@i')
+        AInstruction(symbol='i')
+        >>> parse_assembly_instruction('(LOOP)')
+        Label(symbol='LOOP')
+        >>> parse_assembly_instruction('M=M+1')
+        CInstruction(comp='M+1', dest='M', jump=None)
+        >>> parse_assembly_instruction('D;JGT')
+        CInstruction(comp='D', dest=None, jump='JGT')
+        >>> parse_assembly_instruction('M=M+1;JGT')
+        CInstruction(comp='M+1', dest='M', jump='JGT')
     """
-    if instruction.startswith("@"):
-        return AInstruction(instruction[1:])
-    if instruction.startswith("(") and instruction.endswith(")"):
-        return Label(instruction[1:-1])
+    if instruction_text.startswith("@"):
+        return AInstruction(instruction_text[1:])
+    if instruction_text.startswith("(") and instruction_text.endswith(")"):
+        return Label(instruction_text[1:-1])
 
-    semicolon_count = instruction.count(";")
-    equal_sign_count = instruction.count("=")
-    if semicolon_count > 1:
-        raise ValueError('C-Instruction could have at max one ";".')
-    if equal_sign_count > 1:
-        raise ValueError('C-Instruction could have at max one "=".')
-
-    parts = re.split("=|;", instruction)
-    return CInstruction(
-        comp=parts[1] if equal_sign_count else parts[0],
-        dest=parts[0] if equal_sign_count else None,
-        jump=parts[-1] if semicolon_count else None,
-    )
+    dest, jump = None, None
+    if (equal_sign_index := instruction_text.find("=")) != -1:
+        dest = instruction_text[:equal_sign_index]
+        instruction_text = instruction_text[equal_sign_index + 1 :]
+    if (semicolon_index := instruction_text.find(";")) != -1:
+        jump = instruction_text[semicolon_index + 1 :]
+        instruction_text = instruction_text[:semicolon_index]
+    return CInstruction(comp=instruction_text, dest=dest, jump=jump)

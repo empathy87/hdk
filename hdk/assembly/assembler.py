@@ -1,26 +1,43 @@
-"""Initializes the I/O files and drives the assembly program translation process."""
+"""Initializes the I/O files and drives the translation for an assembly program."""
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from hdk.assembly import code
-from hdk.assembly.parser import parse, preprocess
+from hdk.assembly.parser import clean_line, parse_assembly_instruction
 from hdk.assembly.syntax import Instruction
 
 
 def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
-    """Parses lines of the symbolic assembly source code into instruction objects."""
+    """Parses lines of the symbolic assembly source code into instruction objects.
+
+    Args:
+        lines: An iterable containing the lines of symbolic assembly source code.
+
+    Yields:
+        Instruction objects representing lines of parsed assembly code.
+
+    Raises:
+        ValueError if a line of source code cannot be parsed.
+    """
     for line_num, line in enumerate(lines):
-        preprocessed_line = preprocess(line)
+        preprocessed_line = clean_line(line)
         if len(preprocessed_line) == 0:
             continue
         try:
-            yield parse(preprocessed_line)
+            yield parse_assembly_instruction(preprocessed_line)
         except ValueError as e:
             raise ValueError(f"Cannot parse line {line_num  + 1}.") from e
 
 
 def parse_program(source_path: Path) -> Iterator[Instruction]:
-    """Parses a symbolic assembly program into instruction objects."""
+    """Parses a symbolic assembly program into instruction objects.
+
+    Args:
+        source_path: The path to the source program text file.
+
+    Yields:
+        Instruction objects parsed from the source code.
+    """
 
     def _file_lines() -> Iterator[str]:
         with open(source_path) as file:
