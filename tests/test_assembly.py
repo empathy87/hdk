@@ -1,4 +1,4 @@
-"""Tests the Hack assembler."""
+"""Provides automated testing for the Hack assembler."""
 import filecmp
 import shutil
 from pathlib import Path
@@ -11,7 +11,7 @@ from hdk.assembly import assembler
 
 @fixture
 def tmpdir_with_programs(tmpdir, request) -> Path:
-    """Returns a path to the directory with the source code and target files."""
+    """Returns a path to a temporary directory containing files for testing."""
     path = Path(tmpdir) / "programs"
     test_path = Path(request.module.__file__)
     test_data_path = test_path.parents[0] / (test_path.stem + "_data")
@@ -21,7 +21,11 @@ def tmpdir_with_programs(tmpdir, request) -> Path:
 
 
 def test_translate_correct_programs(tmpdir_with_programs):
-    """Tests that all correct program are translated as expected."""
+    """A test case for correct Hack assembly programs.
+
+    Runs the translation for several correct Hack assembly programs and compares the
+    output of the assembler with the expected results stored in .hack_target files.
+    """
     programs = [
         "Add",
         "Max",
@@ -41,7 +45,11 @@ def test_translate_correct_programs(tmpdir_with_programs):
 
 
 def test_translate_incorrect_program():
-    """Tests that the assembler raises an exception for a program with wrong syntax."""
+    """A test case for an incorrect Hack assembly program.
+
+    Ensures that the assembler raises an exception with a message that contains the
+    line number with the syntax error.
+    """
     program = """
            D=M              // D = second number
            @OUTPUT_D
