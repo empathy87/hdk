@@ -1,4 +1,5 @@
 """Provides automated testing for the Hack assembler."""
+import array
 import filecmp
 import shutil
 from pathlib import Path
@@ -6,7 +7,8 @@ from pathlib import Path
 import pytest
 from _pytest.fixtures import fixture
 
-from hdk.assembly import assembler
+from hdk.assembly import assembler, emulator
+from hdk.assembly.assembler import parse_program
 
 
 @fixture
@@ -42,6 +44,28 @@ def test_translate_correct_programs(tmpdir_with_programs):
         assembler.translate_program(assembly_file)
         is_correct = filecmp.cmp(hack_file, target_hack_file, shallow=False)
         assert is_correct, f"Program {program} translation is incorrect"
+
+
+def test_emulate_correct_programs(tmpdir_with_programs):
+    programs = [
+        ("Add", 6, [], [(0, 5)]),
+        ("Max", 20, [(0, 5), (1, 18)], [(2, 18)]),
+        ("MaxL", 20, [(0, 100), (1, -18)], [(2, 100)]),
+        ("Pong", 25, [], [(0, 257), (14, 27058), (256, 145)]),
+        ("Rect", 10, [(0, 11)], [(16, 11), (17, 16384)]),
+    ]
+    for program, steps, initial_memory_values, target_memory_values in programs:
+        assembly_file = tmpdir_with_programs / (program + ".asm")
+        instructions = parse_program(assembly_file)
+        memory = array.array("h", [0] * 24577)
+        for address, value in initial_memory_values:
+            memory[address] = value
+        emulator.run(instructions, steps, memory)
+        for address, target_value in target_memory_values:
+            value = memory[address]
+            assert (
+                value == target_value
+            ), f"Program {program} M[{address}]={value} instead of {target_value}"
 
 
 def test_translate_incorrect_program():

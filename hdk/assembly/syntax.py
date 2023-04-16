@@ -96,6 +96,18 @@ class CInstruction:
     dest: str | None = None
     jump: str | None = None
 
+    @property
+    def is_m_dest(self):
+        return self.dest and "M" in self.dest
+
+    @property
+    def is_a_dest(self):
+        return self.dest and "A" in self.dest
+
+    @property
+    def is_d_dest(self):
+        return self.dest and "D" in self.dest
+
     @staticmethod
     def _is_dest_correct(dest: str) -> bool:
         """Check if the destination part of the instruction is correct."""

@@ -88,6 +88,11 @@ class HackSymbolTable(collections.UserDict):
         self.data[name] = location
         return location
 
+    def get_symbol_address(self, name: str) -> int:
+        if name in self:
+            return self[name]
+        return self.assign_variable_address(name)
+
 
 def translate_a_instruction(a: AInstruction, symbols: HackSymbolTable) -> str:
     """Translates an A-Instruction into its 16-bit binary code using the symbol table.
@@ -105,10 +110,7 @@ def translate_a_instruction(a: AInstruction, symbols: HackSymbolTable) -> str:
     if a.is_constant:
         value = int(a.symbol)
     else:
-        if a.symbol in symbols:
-            value = symbols[a.symbol]
-        else:
-            value = symbols.assign_variable_address(a.symbol)
+        value = symbols.get_symbol_address(a.symbol)
     return format(value, "016b")
 
 
@@ -200,3 +202,15 @@ def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
             yield translate_a_instruction(instruction, symbol_table)
         else:
             yield translate_c_instruction(instruction)
+
+
+def normalize_instructions(instructions: Iterable[Instruction]) -> list[Command]:
+    commands, symbol_table = _do_first_pass(instructions)
+    clean_commands = []
+    for command in commands:
+        if isinstance(command, AInstruction) and not command.symbol.isdigit():
+            address = symbol_table.get_symbol_address(command.symbol)
+            command = AInstruction(symbol=str(address))
+        clean_commands.append(command)
+    commands = clean_commands
+    return commands
