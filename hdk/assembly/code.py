@@ -204,13 +204,21 @@ def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
             yield translate_c_instruction(instruction)
 
 
-def normalize_instructions(instructions: Iterable[Instruction]) -> list[Command]:
+def link_instructions(instructions: Iterable[Instruction]) -> list[Command]:
+    """Translates instructions in commands for bringing variables into the table.
+
+    Args:
+        instructions: An iterable of symbolic instructions.
+
+    Returns: An list of commands
+
+    """
     commands, symbol_table = _do_first_pass(instructions)
-    clean_commands = []
+    linked_commands = []
     for command in commands:
         if isinstance(command, AInstruction) and not command.symbol.isdigit():
-            address = symbol_table.get_symbol_address(command.symbol)
-            command = AInstruction(symbol=str(address))
-        clean_commands.append(command)
-    commands = clean_commands
-    return commands
+            command = AInstruction(
+                symbol=str(symbol_table.get_symbol_address(command.symbol))
+            )
+        linked_commands.append(command)
+    return linked_commands

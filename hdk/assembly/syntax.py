@@ -97,16 +97,19 @@ class CInstruction:
     jump: str | None = None
 
     @property
-    def is_m_dest(self):
-        return self.dest and "M" in self.dest
+    def is_m_dest(self) -> bool:
+        """Check if memory[a resistor] is dest."""
+        return bool(self.dest and "M" in self.dest)
 
     @property
-    def is_a_dest(self):
-        return self.dest and "A" in self.dest
+    def is_a_dest(self) -> bool:
+        """Check if a resistor is dest."""
+        return bool(self.dest and "A" in self.dest)
 
     @property
-    def is_d_dest(self):
-        return self.dest and "D" in self.dest
+    def is_d_dest(self) -> bool:
+        """Check if d resistor is dest."""
+        return bool(self.dest and "D" in self.dest)
 
     @staticmethod
     def _is_dest_correct(dest: str) -> bool:

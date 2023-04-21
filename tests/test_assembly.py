@@ -10,6 +10,8 @@ from _pytest.fixtures import fixture
 from hdk.assembly import assembler, emulator
 from hdk.assembly.assembler import parse_program
 
+HACK_RAM_SIZE = 24577
+
 
 @fixture
 def tmpdir_with_programs(tmpdir, request) -> Path:
@@ -47,6 +49,12 @@ def test_translate_correct_programs(tmpdir_with_programs):
 
 
 def test_emulate_correct_programs(tmpdir_with_programs):
+    """A test case for correct Hack assembly programs.
+
+    Runs the emulator for several correct Hack assembly programs and compares memory
+    with the expected results in some cells.
+    """
+
     programs = [
         ("Add", 6, [], [(0, 5)]),
         ("Max", 20, [(0, 5), (1, 18)], [(2, 18)]),
@@ -57,7 +65,7 @@ def test_emulate_correct_programs(tmpdir_with_programs):
     for program, steps, initial_memory_values, target_memory_values in programs:
         assembly_file = tmpdir_with_programs / (program + ".asm")
         instructions = parse_program(assembly_file)
-        memory = array.array("h", [0] * 24577)
+        memory = array.array("h", [0] * HACK_RAM_SIZE)
         for address, value in initial_memory_values:
             memory[address] = value
         emulator.run(instructions, steps, memory)

@@ -1,7 +1,7 @@
 from array import array
 from collections.abc import Callable, Iterable
 
-from hdk.assembly.code import normalize_instructions
+from hdk.assembly.code import link_instructions
 from hdk.assembly.syntax import AInstruction, Command, Instruction
 
 _JUMP_TABLE: dict[str | None, Callable[[int], bool]] = {
@@ -48,8 +48,18 @@ _COMP_TABLE: dict[str, Callable[[int, int, int], int]] = {
 }
 
 
-def run(instructions: Iterable[Instruction], steps: int, memory: array):
-    commands = normalize_instructions(instructions)
+def run(instructions: Iterable[Instruction], steps: int, memory: array) -> None:
+    """Modifies memory by instructions
+
+    Args:
+        instructions: An iterable of symbolic instructions.
+        steps: number of commands to execute
+        memory: an array of signed int
+
+    Returns:
+
+    """
+    commands = link_instructions(instructions)
     pc, a, d = 0, 0, 0
     for _ in range(steps):
         curr_command: Command = commands[pc]
