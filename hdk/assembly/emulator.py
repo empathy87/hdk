@@ -1,8 +1,11 @@
+"""Provides function 'run' to emulate assembler code."""
 from array import array
 from collections.abc import Callable, Iterable
 
 from hdk.assembly.code import link_instructions
-from hdk.assembly.syntax import AInstruction, Command, Instruction
+from hdk.assembly.syntax import AInstruction, Instruction
+
+HACK_RAM_SIZE = 24576
 
 _JUMP_TABLE: dict[str | None, Callable[[int], bool]] = {
     None: lambda comp_result: False,
@@ -53,36 +56,47 @@ def run(instructions: Iterable[Instruction], steps: int, memory: array) -> None:
 
     Args:
         instructions: An iterable of symbolic instructions.
-        steps: number of commands to execute
-        memory: an array of signed int
-
-    Returns:
+        steps: Number of commands to execute.
+        memory: An array of signed int.
 
     """
     commands = link_instructions(instructions)
     pc, a, d = 0, 0, 0
     for _ in range(steps):
-        curr_command: Command = commands[pc]
+        curr_command = commands[pc]
         if isinstance(curr_command, AInstruction):
             a = int(curr_command.symbol)
             pc += 1
             continue
-        m = memory[a] if a <= 24576 else None
-        result = compute(curr_command.comp, a, d, m)
+        if "M" not in curr_command.comp:
+            m = 0
+        elif a >= HACK_RAM_SIZE:
+            raise ValueError("Out of memory.")
+        else:
+            m = memory[a]
+        comp_result = compute(curr_command.comp, a, d, m)
         if curr_command.is_m_dest:
-            memory[a] = result
+            memory[a] = comp_result
         if curr_command.is_a_dest:
-            a = result
+            a = comp_result
         if curr_command.is_d_dest:
-            d = result
-        if _JUMP_TABLE[curr_command.jump](result):
+            d = comp_result
+        if _JUMP_TABLE[curr_command.jump](comp_result):
             pc = a
         else:
             pc += 1
 
 
 def compute(comp: str, a: int, d: int, m: int) -> int:
-    """
+    """Computes the result from the registers using the comp instruction.
+
+    Args:
+        a: An integer value of A-register.
+        d: An integer value of D-register.
+        m: An integer value of RAM (addressed by A-register).
+
+    Returns:
+        An integer of computation result.
     >>> compute("!D", a=0, d=1, m=0)
     -2
     >>> compute("D+1", a=0, d=32767, m=0)

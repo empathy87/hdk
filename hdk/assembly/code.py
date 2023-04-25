@@ -89,6 +89,14 @@ class HackSymbolTable(collections.UserDict):
         return location
 
     def get_symbol_address(self, name: str) -> int:
+        """Returns the address assigned to a given symbol, or
+        assigns a new address if the symbol is not already in the symbol table.
+
+        Args:
+            name: A string representing the symbol name.
+        Returns:
+            An integer representing the memory address assigned to the symbol.
+        """
         if name in self:
             return self[name]
         return self.assign_variable_address(name)
@@ -205,20 +213,21 @@ def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
 
 
 def link_instructions(instructions: Iterable[Instruction]) -> list[Command]:
-    """Translates instructions in commands for bringing variables into the table.
+    """
+    Translates symbolic instructions into executable commands.
+    That can be used to manipulate variables in a table.
 
     Args:
         instructions: An iterable of symbolic instructions.
 
-    Returns: An list of commands
-
+    Returns:
+        A list of linked commands.
     """
     commands, symbol_table = _do_first_pass(instructions)
     linked_commands = []
     for command in commands:
         if isinstance(command, AInstruction) and not command.symbol.isdigit():
-            command = AInstruction(
-                symbol=str(symbol_table.get_symbol_address(command.symbol))
-            )
+            address = str(symbol_table.get_symbol_address(command.symbol))
+            command = AInstruction(symbol=address)
         linked_commands.append(command)
     return linked_commands

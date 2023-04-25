@@ -98,22 +98,22 @@ class CInstruction:
 
     @property
     def is_m_dest(self) -> bool:
-        """Check if memory[a resistor] is dest."""
+        """True if RAM addressed by A-register is the destination of the computation."""
         return bool(self.dest and "M" in self.dest)
 
     @property
     def is_a_dest(self) -> bool:
-        """Check if a resistor is dest."""
+        """True if A-register is the destination of the computation."""
         return bool(self.dest and "A" in self.dest)
 
     @property
     def is_d_dest(self) -> bool:
-        """Check if d resistor is dest."""
+        """True if D-register is the destination of the computation."""
         return bool(self.dest and "D" in self.dest)
 
     @staticmethod
     def _is_dest_correct(dest: str) -> bool:
-        """Check if the destination part of the instruction is correct."""
+        """True if the destination part of the instruction is correct."""
         if dest is None:
             return True
         if not all(c in "ADM" for c in dest):

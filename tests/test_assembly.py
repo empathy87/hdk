@@ -9,8 +9,7 @@ from _pytest.fixtures import fixture
 
 from hdk.assembly import assembler, emulator
 from hdk.assembly.assembler import parse_program
-
-HACK_RAM_SIZE = 24577
+from hdk.assembly.emulator import HACK_RAM_SIZE
 
 
 @fixture
@@ -25,7 +24,7 @@ def tmpdir_with_programs(tmpdir, request) -> Path:
 
 
 def test_translate_correct_programs(tmpdir_with_programs):
-    """A test case for correct Hack assembly programs.
+    """A test case for emulating correct Hack assembly programs.
 
     Runs the translation for several correct Hack assembly programs and compares the
     output of the assembler with the expected results stored in .hack_target files.
