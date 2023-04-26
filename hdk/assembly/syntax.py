@@ -113,7 +113,7 @@ class CInstruction:
 
     @staticmethod
     def _is_dest_correct(dest: str) -> bool:
-        """True if the destination part of the instruction is correct."""
+        """Checks if the given destination part of an instruction is correct."""
         if dest is None:
             return True
         if not all(c in "ADM" for c in dest):
@@ -142,12 +142,13 @@ def _is_symbol_valid(symbol: str) -> bool:
     Returns:
         True if the symbol is correct, False otherwise.
 
-    >>> _is_symbol_valid('_R0$:56.')
-    True
-    >>> _is_symbol_valid('5A')
-    False
-    >>> _is_symbol_valid('A97^')
-    False
+    Typical usage example:
+        >>> _is_symbol_valid('_R0$:56.')
+        True
+        >>> _is_symbol_valid('5A')
+        False
+        >>> _is_symbol_valid('A97^')
+        False
     """
     if len(symbol) == 0 or symbol[0].isdigit():
         return False

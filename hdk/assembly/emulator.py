@@ -58,7 +58,6 @@ def run(instructions: Iterable[Instruction], steps: int, memory: array) -> None:
         instructions: An iterable of symbolic instructions.
         steps: Number of commands to execute.
         memory: An array of signed int.
-
     """
     commands = link_instructions(instructions)
     pc, a, d = 0, 0, 0
@@ -97,24 +96,26 @@ def compute(comp: str, a: int, d: int, m: int) -> int:
 
     Returns:
         An integer of computation result.
-    >>> compute("!D", a=0, d=1, m=0)
-    -2
-    >>> compute("D+1", a=0, d=32767, m=0)
-    -32768
-    >>> compute("D-1", a=0, d=-32768, m=0)
-    32767
-    >>> compute("D+A", a=32767, d=-32768, m=0)
-    -1
-    >>> compute("D-A", a=32767, d=-32768, m=0)
-    1
-    >>> compute("D+A", a=327, d=-32767, m=0)
-    -32440
-    >>> compute("D+A", a=32767, d=32767, m=0)
-    -2
-    >>> compute("-D", a=0, d=-32768, m=0)
-    -32768
-    >>> compute("A-D", a=5, d=-32768, m=0)
-    -32763
+
+    Typical usage example:
+        >>> compute("!D", a=0, d=1, m=0)
+        -2
+        >>> compute("D+1", a=0, d=32767, m=0)
+        -32768
+        >>> compute("D-1", a=0, d=-32768, m=0)
+        32767
+        >>> compute("D+A", a=32767, d=-32768, m=0)
+        -1
+        >>> compute("D-A", a=32767, d=-32768, m=0)
+        1
+        >>> compute("D+A", a=327, d=-32767, m=0)
+        -32440
+        >>> compute("D+A", a=32767, d=32767, m=0)
+        -2
+        >>> compute("-D", a=0, d=-32768, m=0)
+        -32768
+        >>> compute("A-D", a=5, d=-32768, m=0)
+        -32763
     """
     result = _COMP_TABLE[comp](a, d, m)
     result &= 0xFFFF

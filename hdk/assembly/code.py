@@ -88,18 +88,18 @@ class HackSymbolTable(collections.UserDict):
         self.data[name] = location
         return location
 
-    def get_symbol_address(self, name: str) -> int:
-        """Returns the address assigned to a given symbol, or
-        assigns a new address if the symbol is not already in the symbol table.
+    def get_address(self, symbol: str) -> int:
+        """Returns the address assigned to a given symbol.
+        It assigns a new address if the symbol is not already in the symbol table.
 
         Args:
-            name: A string representing the symbol name.
+            symbol: A string representing the symbol name.
         Returns:
             An integer representing the memory address assigned to the symbol.
         """
-        if name in self:
-            return self[name]
-        return self.assign_variable_address(name)
+        if symbol in self:
+            return self[symbol]
+        return self.assign_variable_address(symbol)
 
 
 def translate_a_instruction(a: AInstruction, symbols: HackSymbolTable) -> str:
@@ -118,7 +118,7 @@ def translate_a_instruction(a: AInstruction, symbols: HackSymbolTable) -> str:
     if a.is_constant:
         value = int(a.symbol)
     else:
-        value = symbols.get_symbol_address(a.symbol)
+        value = symbols.get_address(a.symbol)
     return format(value, "016b")
 
 
@@ -213,9 +213,7 @@ def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
 
 
 def link_instructions(instructions: Iterable[Instruction]) -> list[Command]:
-    """
-    Translates symbolic instructions into executable commands.
-    That can be used to manipulate variables in a table.
+    """Translates symbolic instructions into executable commands.
 
     Args:
         instructions: An iterable of symbolic instructions.
@@ -227,7 +225,7 @@ def link_instructions(instructions: Iterable[Instruction]) -> list[Command]:
     linked_commands = []
     for command in commands:
         if isinstance(command, AInstruction) and not command.symbol.isdigit():
-            address = str(symbol_table.get_symbol_address(command.symbol))
-            command = AInstruction(symbol=address)
+            address = symbol_table.get_address(command.symbol)
+            command = AInstruction(symbol=str(address))
         linked_commands.append(command)
     return linked_commands
