@@ -88,6 +88,18 @@ class HackSymbolTable(collections.UserDict):
         self.data[name] = location
         return location
 
+    def get_address(self, symbol: str) -> int:
+        """Returns the address assigned to a given symbol.
+
+        Args:
+            symbol: A string representing the symbol name.
+        Returns:
+            An integer representing the memory address assigned to the symbol.
+        """
+        if symbol in self:
+            return self[symbol]
+        return self.assign_variable_address(symbol)
+
 
 def translate_a_instruction(a: AInstruction, symbols: HackSymbolTable) -> str:
     """Translates an A-Instruction into its 16-bit binary code using the symbol table.
@@ -105,10 +117,7 @@ def translate_a_instruction(a: AInstruction, symbols: HackSymbolTable) -> str:
     if a.is_constant:
         value = int(a.symbol)
     else:
-        if a.symbol in symbols:
-            value = symbols[a.symbol]
-        else:
-            value = symbols.assign_variable_address(a.symbol)
+        value = symbols.get_address(a.symbol)
     return format(value, "016b")
 
 
@@ -200,3 +209,22 @@ def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
             yield translate_a_instruction(instruction, symbol_table)
         else:
             yield translate_c_instruction(instruction)
+
+
+def link_instructions(instructions: Iterable[Instruction]) -> list[Command]:
+    """Translates symbolic instructions into executable commands.
+
+    Args:
+        instructions: An iterable of symbolic instructions.
+
+    Returns:
+        A list of linked commands.
+    """
+    commands, symbol_table = _do_first_pass(instructions)
+    linked_commands = []
+    for command in commands:
+        if isinstance(command, AInstruction) and not command.symbol.isdigit():
+            address = symbol_table.get_address(command.symbol)
+            command = AInstruction(symbol=str(address))
+        linked_commands.append(command)
+    return linked_commands

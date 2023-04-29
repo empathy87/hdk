@@ -96,9 +96,24 @@ class CInstruction:
     dest: str | None = None
     jump: str | None = None
 
+    @property
+    def is_m_dest(self) -> bool:
+        """True if RAM addressed by A-register is the destination of the computation."""
+        return bool(self.dest and "M" in self.dest)
+
+    @property
+    def is_a_dest(self) -> bool:
+        """True if A-register is the destination of the computation."""
+        return bool(self.dest and "A" in self.dest)
+
+    @property
+    def is_d_dest(self) -> bool:
+        """True if D-register is the destination of the computation."""
+        return bool(self.dest and "D" in self.dest)
+
     @staticmethod
     def _is_dest_correct(dest: str) -> bool:
-        """Check if the destination part of the instruction is correct."""
+        """Checks if the given destination part of an instruction is correct."""
         if dest is None:
             return True
         if not all(c in "ADM" for c in dest):
@@ -127,12 +142,13 @@ def _is_symbol_valid(symbol: str) -> bool:
     Returns:
         True if the symbol is correct, False otherwise.
 
-    >>> _is_symbol_valid('_R0$:56.')
-    True
-    >>> _is_symbol_valid('5A')
-    False
-    >>> _is_symbol_valid('A97^')
-    False
+    Typical usage example:
+        >>> _is_symbol_valid('_R0$:56.')
+        True
+        >>> _is_symbol_valid('5A')
+        False
+        >>> _is_symbol_valid('A97^')
+        False
     """
     if len(symbol) == 0 or symbol[0].isdigit():
         return False
