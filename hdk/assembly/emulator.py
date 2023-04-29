@@ -52,12 +52,15 @@ _COMP_TABLE: dict[str, Callable[[int, int, int], int]] = {
 
 
 def run(instructions: Iterable[Instruction], steps: int, memory: array) -> None:
-    """Modifies memory by instructions
+    """Modifies the memory array according to the iterable of symbolic instructions.
 
     Args:
         instructions: An iterable of symbolic instructions.
-        steps: Number of commands to execute.
-        memory: An array of signed int.
+        steps: An integer number of commands to execute.
+        memory: An array of signed integers to be modified by the instructions.
+
+    Raises:
+        ValueError: If the instruction tries to access memory beyond the HACK_RAM_SIZE.
     """
     commands = link_instructions(instructions)
     pc, a, d = 0, 0, 0
