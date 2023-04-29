@@ -90,7 +90,6 @@ class HackSymbolTable(collections.UserDict):
 
     def get_address(self, symbol: str) -> int:
         """Returns the address assigned to a given symbol.
-        It assigns a new address if the symbol is not already in the symbol table.
 
         Args:
             symbol: A string representing the symbol name.
