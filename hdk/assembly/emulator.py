@@ -7,7 +7,7 @@ from hdk.assembly.syntax import AInstruction, Instruction
 
 HACK_RAM_SIZE = 24576
 
-_JUMP_TABLE: dict[str | None, Callable[[int], bool]] = {
+JUMP_CONDITIONS: dict[str | None, Callable[[int], bool]] = {
     None: lambda comp_result: False,
     "JMP": lambda comp_result: True,
     "JLE": lambda comp_result: comp_result <= 0,
@@ -19,7 +19,7 @@ _JUMP_TABLE: dict[str | None, Callable[[int], bool]] = {
 }
 
 
-_COMP_TABLE: dict[str, Callable[[int, int, int], int]] = {
+COMPUTE_OPERATIONS: dict[str, Callable[[int, int, int], int]] = {
     "0": lambda a, d, m: 0,
     "1": lambda a, d, m: 1,
     "-1": lambda a, d, m: -1,
@@ -83,7 +83,7 @@ def run(instructions: Iterable[Instruction], steps: int, memory: array) -> None:
             a = comp_result
         if curr_command.is_d_dest:
             d = comp_result
-        if _JUMP_TABLE[curr_command.jump](comp_result):
+        if JUMP_CONDITIONS[curr_command.jump](comp_result):
             pc = a
         else:
             pc += 1
@@ -120,7 +120,7 @@ def compute(comp: str, a: int, d: int, m: int) -> int:
         >>> compute("A-D", a=5, d=-32768, m=0)
         -32763
     """
-    result = _COMP_TABLE[comp](a, d, m)
+    result = COMPUTE_OPERATIONS[comp](a, d, m)
     result &= 0xFFFF
     if (result & 0x8000) != 0:
         result = (result & 0x7FFF) - 0x7FFF - 1
