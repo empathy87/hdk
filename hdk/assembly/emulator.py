@@ -65,6 +65,8 @@ def run(instructions: Iterable[Instruction], steps: int, memory: array) -> None:
     commands = link_instructions(instructions)
     pc, a, d = 0, 0, 0
     for _ in range(steps):
+        if pc >= len(commands):
+            break
         curr_command = commands[pc]
         if isinstance(curr_command, AInstruction):
             a = int(curr_command.symbol)

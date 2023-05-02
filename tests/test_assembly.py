@@ -29,6 +29,7 @@ def test_translate_correct_programs(tmpdir_with_programs):
     Runs the translation for several correct Hack assembly programs and compares the
     output of the assembler with the expected results stored in .hack_target files.
     """
+
     programs = [
         "Add",
         "Max",
