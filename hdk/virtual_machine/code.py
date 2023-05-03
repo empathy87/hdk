@@ -1,4 +1,4 @@
-"""Provides functions to translate VM commands into their assembly commands."""
+"""Provides functions to translate VM commands into their assembly instructions."""
 from collections.abc import Iterable, Iterator
 
 from hdk.virtual_machine.syntax import (
@@ -41,7 +41,7 @@ def translate_arithmetic_logical_command(
         command_id: The current command number.
 
     Returns:
-         A list of assembly code instructions and the updated instruction counter value.
+         A list of assembly code instructions.
     """
     if command.operation == "neg":
         return ["@SP", "A=M-1", "M=-M"]
@@ -56,7 +56,7 @@ def translate_arithmetic_logical_command(
             _BINARY_TABLE[command.operation],
         ]
     if command.operation in _COMPARISON_TABLE:
-        code = [
+        return [
             "@SP",
             "AM=M-1",
             "D=M",
@@ -76,7 +76,6 @@ def translate_arithmetic_logical_command(
             "M=-1",
             f"(continue{command_id})",
         ]
-        return code
     raise ValueError(
         f"Invalid command {command.operation!r} for arithmetic-logical instruction"
     )
@@ -177,7 +176,7 @@ def translate(commands: Iterable[VMCommand]) -> Iterator[str]:
         commands: An iterable of commands to be translated.
 
     Yields:
-        String representing the assembly code for each command.
+        Strings representing the assembly code for each command.
     """
     for command_id, command in enumerate(commands):
         if isinstance(command, ArithmeticLogicalCommand):
