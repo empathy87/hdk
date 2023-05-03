@@ -3,7 +3,7 @@ from collections.abc import Iterable, Iterator
 from pathlib import Path
 
 from hdk.virtual_machine import code
-from hdk.virtual_machine.parser import clean_line, parse_vm_instruction
+from hdk.virtual_machine.parser import parse_vm_instruction
 from hdk.virtual_machine.syntax import Instruction
 
 
@@ -20,11 +20,10 @@ def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
         ValueError if a line of source code cannot be parsed.
     """
     for line_num, line in enumerate(lines):
-        preprocessed_line = clean_line(line)
-        if len(preprocessed_line) == 0:
+        if len(line) == 0 or line.startswith("//"):
             continue
         try:
-            yield parse_vm_instruction(preprocessed_line)
+            yield parse_vm_instruction(line)
         except ValueError as e:
             raise ValueError(f"Cannot parse line {line_num  + 1}.") from e
 

@@ -4,8 +4,8 @@ from typing import ClassVar, TypeAlias
 
 
 @dataclass(frozen=True)
-class StackInstruction:
-    """A data class representing a stack instruction in a virtual machine.
+class ArithmeticLogicalCommand:
+    """Represents a stack instruction in a virtual machine.
 
     Attributes:
         command: The operation to be performed on the stack.
@@ -32,8 +32,8 @@ class StackInstruction:
 
 
 @dataclass(frozen=True)
-class MemoryAccessInstruction:
-    """A data class representing a memory access instruction in a virtual machine.
+class MemoryTransferCommand:
+    """Represents a memory access instruction in a virtual machine.
 
     Attributes:
         command: The type of memory access operation to be performed.
@@ -61,15 +61,17 @@ class MemoryAccessInstruction:
 
     command: str
     segment: str
-    index: str
+    index: int
 
     def __post_init__(self):
         cls = self.__class__
+        if self.index < 0:
+            raise ValueError(f"Wrong index {self.index!r} for operation on stack.")
         if self.command not in cls._ALLOWED_COMMAND:
             raise ValueError(f"Wrong command {self.command!r} for operation on stack.")
-        if self.command not in cls._ALLOWED_COMMAND:
-            raise ValueError(f"Wrong command {self.command!r} for operation on stack.")
+        if self.segment not in cls._ALLOWED_SEGMENT:
+            raise ValueError(f"Wrong segment {self.segment!r} for operation on stack.")
 
 
 # An alias for type-hints representing virtual machine instructions.
-Instruction: TypeAlias = StackInstruction | MemoryAccessInstruction
+Instruction: TypeAlias = ArithmeticLogicalCommand | MemoryTransferCommand

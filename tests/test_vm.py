@@ -26,9 +26,8 @@ def test_translate_correct_programs(tmpdir_with_programs):
     """A test case for emulating correct vm programs.
 
     Runs the translation for several correct vm programs and compares the
-    output of the assembler with the expected results.
+    outgoing memory with the expected results.
     """
-
     programs = [
         ("SimpleAdd", 60, [(0, 256)], [(0, 257), (256, 15)]),
         (
@@ -85,4 +84,4 @@ def test_translate_correct_programs(tmpdir_with_programs):
             value = memory[address]
             assert (
                 value == target_value
-            ), f"Program {program} M[{address}]={value} instead of {target_value}"
+            ), f"Program {program} M[{address}]={value} instead of {target_value}."

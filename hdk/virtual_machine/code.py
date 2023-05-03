@@ -2,9 +2,9 @@
 from collections.abc import Iterable, Iterator
 
 from hdk.virtual_machine.syntax import (
+    ArithmeticLogicalCommand,
     Instruction,
-    MemoryAccessInstruction,
-    StackInstruction,
+    MemoryTransferCommand,
 )
 
 _BINARY_TABLE = {
@@ -29,7 +29,7 @@ _SEGMENT_TABLE = {
 
 
 def translate_stack_instruction(
-    stack_instruction: StackInstruction, instruction_counter: int
+    stack_instruction: ArithmeticLogicalCommand, instruction_counter: int
 ) -> tuple[list[str], int]:
     """Translates a StackInstruction into its assembly code.
 
@@ -42,9 +42,7 @@ def translate_stack_instruction(
 
     Raises:
         ValueError: If the given StackInstruction has an invalid command.
-
     """
-
     if stack_instruction.command == "neg":
         return ["@SP", "A=M-1", "M=-M"], instruction_counter
     elif stack_instruction.command == "not":
@@ -86,7 +84,7 @@ def translate_stack_instruction(
         )
 
 
-def translate_memory_access_instruction(m: MemoryAccessInstruction) -> list[str]:
+def translate_memory_access_instruction(m: MemoryTransferCommand) -> list[str]:
     """Translates a MemoryAccessInstruction into its assembly code.
     Args:
         m (MemoryAccessInstruction): The memory access instruction to be translated.
@@ -122,7 +120,7 @@ def translate_memory_access_instruction(m: MemoryAccessInstruction) -> list[str]
             ] + add_d_to_stack()
         if m.segment == "pointer":
             return ["@THIS" if m.index == "0" else "@THAT", "D=M"] + add_d_to_stack()
-        return [f"@{str(int(m.index) + 16)}", "D=M"] + add_d_to_stack()
+        return [f"@{m.index + 16}", "D=M"] + add_d_to_stack()
     else:
         if m.segment in _SEGMENT_TABLE:
             return [
@@ -137,7 +135,7 @@ def translate_memory_access_instruction(m: MemoryAccessInstruction) -> list[str]
             return [
                 "@R5",
                 "D=M",
-                f"@{str(int(m.index) + 5)}",
+                f"@{m.index + 5}",
                 "D=D+A",
                 "@R13",
                 "M=D",
@@ -152,7 +150,7 @@ def translate_memory_access_instruction(m: MemoryAccessInstruction) -> list[str]
         return [f"@{str(int(m.index) + 16)}", "D=A", "@R13", "M=D"] + pop_to_r13()
 
 
-def translate(instructions: Iterable[Instruction]) -> Iterator[list[str]]:
+def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
     """Translates a sequence of instructions into a sequence of assembly code lists.
 
     Args:
@@ -161,14 +159,13 @@ def translate(instructions: Iterable[Instruction]) -> Iterator[list[str]]:
     Yields:
         list[str]: Lists of strings representing the assembly code for each instruction.
     """
-
     label_counter = 0
 
     for instruction in instructions:
-        if isinstance(instruction, StackInstruction):
+        if isinstance(instruction, ArithmeticLogicalCommand):
             asm_code, label_counter = translate_stack_instruction(
                 instruction, label_counter
             )
-            yield asm_code
+            yield from asm_code
         else:
-            yield translate_memory_access_instruction(instruction)
+            yield from translate_memory_access_instruction(instruction)
