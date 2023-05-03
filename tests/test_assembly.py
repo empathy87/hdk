@@ -53,7 +53,6 @@ def test_emulate_correct_programs(tmpdir_with_programs):
     Runs the emulator for several correct Hack assembly programs and compares memory
     with the expected results in some cells.
     """
-
     programs = [
         ("Add", 6, [], [(0, 5)]),
         ("Max", 20, [(0, 5), (1, 18)], [(2, 18)]),
