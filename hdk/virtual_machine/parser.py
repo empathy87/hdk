@@ -18,9 +18,9 @@ def parse_vm_command(line: str) -> VMCommand:
 
     Typical usage example:
         >>> parse_vm_command('push constant 17')
-        MemoryAccessInstruction(command='push', segment='constant', index='17')
+        MemoryTransferCommand(command='push', segment='constant', index='17')
         >>> parse_vm_command('add')
-        StackInstruction(command='add')
+        ArithmeticLogicalCommand(command='add')
     """
     if line.startswith("push") or line.startswith("pop"):
         operation, segment, idx = line.split()
