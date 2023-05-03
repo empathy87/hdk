@@ -6,23 +6,25 @@ from hdk.virtual_machine.syntax import (
 )
 
 
-def parse_vm_instruction(instruction_text: str) -> VMCommand:
-    """Parses a symbolic Hack assembly instruction into its underlying fields.
+def parse_vm_command(line: str) -> VMCommand:
+    """Parses a symbolic vm command into its underlying fields.
 
     Args:
-        instruction_text: The symbolic instruction to be parsed.
+        line: The symbolic command to be parsed.
 
     Returns:
-        An instance of either AInstruction, CInstruction, or Label, representing
-        the parsed instruction.
+        An instance of either MemoryTransferCommand or ArithmeticLogicalCommand,
+        representing the parsed command.
 
     Typical usage example:
-        >>> parse_vm_instruction('push constant 17')
+        >>> parse_vm_command('push constant 17')
         MemoryAccessInstruction(command='push', segment='constant', index='17')
-        >>> parse_vm_instruction('add')
+        >>> parse_vm_command('add')
         StackInstruction(command='add')
     """
-    if instruction_text.startswith("push") or instruction_text.startswith("pop"):
-        command, segment, idx = instruction_text.split()
-        return MemoryTransferCommand(command=command, segment=segment, index=int(idx))
-    return ArithmeticLogicalCommand(command=instruction_text)
+    if line.startswith("push") or line.startswith("pop"):
+        operation, segment, idx = line.split()
+        return MemoryTransferCommand(
+            operation=operation, segment=segment, index=int(idx)
+        )
+    return ArithmeticLogicalCommand(operation=line)
