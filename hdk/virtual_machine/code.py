@@ -3,8 +3,8 @@ from collections.abc import Iterable, Iterator
 
 from hdk.virtual_machine.syntax import (
     ArithmeticLogicalCommand,
-    Instruction,
     MemoryTransferCommand,
+    VMCommand,
 )
 
 _BINARY_TABLE = {
@@ -28,13 +28,13 @@ _SEGMENT_TABLE = {
 }
 
 
-def translate_stack_instruction(
-    stack_instruction: ArithmeticLogicalCommand, instruction_counter: int
-) -> tuple[list[str], int]:
+def translate_arithmetic_logical_command(
+    command: ArithmeticLogicalCommand, instruction_counter: int
+) -> list[str]:
     """Translates a StackInstruction into its assembly code.
 
     Args:
-        stack_instruction (StackInstruction): The stack instruction to translate.
+        command (StackInstruction): The stack instruction to translate.
         instruction_counter (int): The current instruction counter value.
 
     Returns:
@@ -43,20 +43,20 @@ def translate_stack_instruction(
     Raises:
         ValueError: If the given StackInstruction has an invalid command.
     """
-    if stack_instruction.command == "neg":
-        return ["@SP", "A=M-1", "M=-M"], instruction_counter
-    elif stack_instruction.command == "not":
-        return ["@SP", "A=M-1", "M=!M"], instruction_counter
-    elif stack_instruction.command in _BINARY_TABLE:
+    if command.command == "neg":
+        return ["@SP", "A=M-1", "M=-M"]
+    elif command.command == "not":
+        return ["@SP", "A=M-1", "M=!M"]
+    elif command.command in _BINARY_TABLE:
         return [
             "@SP",
             "AM=M-1",
             "D=M",
             "A=A-1",
-            _BINARY_TABLE[stack_instruction.command],
-        ], instruction_counter
-    elif stack_instruction.command in {"eq", "gt", "lt"}:
-        true_jump = _COMPARISON_TABLE[stack_instruction.command]
+            _BINARY_TABLE[command.command],
+        ]
+    elif command.command in {"eq", "gt", "lt"}:
+        true_jump = _COMPARISON_TABLE[command.command]
         code = [
             "@SP",
             "AM=M-1",
@@ -77,17 +77,15 @@ def translate_stack_instruction(
             "M=-1",
             f"(continue{instruction_counter})",
         ]
-        return code, instruction_counter + 1
+        return code
     else:
-        raise ValueError(
-            f"Invalid command {stack_instruction.command!r} for stack instruction"
-        )
+        raise ValueError(f"Invalid command {command.command!r} for stack instruction")
 
 
-def translate_memory_access_instruction(m: MemoryTransferCommand) -> list[str]:
+def translate_memory_transfer_command(command: MemoryTransferCommand) -> list[str]:
     """Translates a MemoryAccessInstruction into its assembly code.
     Args:
-        m (MemoryAccessInstruction): The memory access instruction to be translated.
+        command: The memory access instruction to be translated.
 
     Returns:
         list[str]: The assembly code for the given memory access instruction.
@@ -99,73 +97,74 @@ def translate_memory_access_instruction(m: MemoryTransferCommand) -> list[str]:
     def pop_to_r13() -> list[str]:
         return ["@SP", "AM=M-1", "D=M", "@R13", "A=M", "M=D"]
 
-    if m.command == "push":
-        if m.segment == "constant":
-            return [f"@{m.index}", "D=A"] + add_d_to_stack()
-        if m.segment in _SEGMENT_TABLE:
+    def translate_push() -> list[str]:
+        if command.segment == "constant":
+            return [f"@{command.index}", "D=A"]
+        if command.segment in _SEGMENT_TABLE:
             return [
-                f"@{_SEGMENT_TABLE[m.segment]}",
+                f"@{_SEGMENT_TABLE[command.segment]}",
                 "D=M",
-                f"@{m.index}",
+                f"@{command.index}",
                 "A=D+A",
                 "D=M",
-            ] + add_d_to_stack()
-        if m.segment == "temp":
+            ]
+        if command.segment == "temp":
             return [
                 "@R5",
                 "D=M",
-                f"@{str(int(m.index) + 5)}",
+                f"@{command.index + 5}",
                 "A=D+A",
                 "D=M",
-            ] + add_d_to_stack()
-        if m.segment == "pointer":
-            return ["@THIS" if m.index == "0" else "@THAT", "D=M"] + add_d_to_stack()
-        return [f"@{m.index + 16}", "D=M"] + add_d_to_stack()
-    else:
-        if m.segment in _SEGMENT_TABLE:
+            ]
+        if command.segment == "pointer":
+            return ["@THIS" if command.index == 0 else "@THAT", "D=M"]
+        return [f"@{command.index + 16}", "D=M"]
+
+    def translate_pop() -> list[str]:
+        if command.segment in _SEGMENT_TABLE:
             return [
-                f"@{_SEGMENT_TABLE[m.segment]}",
+                f"@{_SEGMENT_TABLE[command.segment]}",
                 "D=M",
-                f"@{m.index}",
+                f"@{command.index}",
                 "D=D+A",
                 "@R13",
                 "M=D",
-            ] + pop_to_r13()
-        if m.segment == "temp":
+            ]
+        if command.segment == "temp":
             return [
                 "@R5",
                 "D=M",
-                f"@{m.index + 5}",
+                f"@{command.index + 5}",
                 "D=D+A",
                 "@R13",
                 "M=D",
-            ] + pop_to_r13()
-        if m.segment == "pointer":
+            ]
+        if command.segment == "pointer":
             return [
-                "@THIS" if m.index == "0" else "@THAT",
+                "@THIS" if command.index == 0 else "@THAT",
                 "D=A",
                 "@R13",
                 "M=D",
-            ] + pop_to_r13()
-        return [f"@{str(int(m.index) + 16)}", "D=A", "@R13", "M=D"] + pop_to_r13()
+            ]
+        return [f"@{command.index + 16}", "D=A", "@R13", "M=D"]
+
+    if command.command == "push":
+        return translate_push() + add_d_to_stack()
+    else:
+        return translate_pop() + pop_to_r13()
 
 
-def translate(instructions: Iterable[Instruction]) -> Iterator[str]:
+def translate(commands: Iterable[VMCommand]) -> Iterator[str]:
     """Translates a sequence of instructions into a sequence of assembly code lists.
 
     Args:
-        instructions: An iterable of instructions to be translated.
+        commands: An iterable of instructions to be translated.
 
     Yields:
         list[str]: Lists of strings representing the assembly code for each instruction.
     """
-    label_counter = 0
-
-    for instruction in instructions:
-        if isinstance(instruction, ArithmeticLogicalCommand):
-            asm_code, label_counter = translate_stack_instruction(
-                instruction, label_counter
-            )
-            yield from asm_code
+    for command_id, command in enumerate(commands):
+        if isinstance(command, ArithmeticLogicalCommand):
+            yield from translate_arithmetic_logical_command(command, command_id)
         else:
-            yield from translate_memory_access_instruction(instruction)
+            yield from translate_memory_transfer_command(command)

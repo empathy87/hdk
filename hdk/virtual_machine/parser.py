@@ -1,12 +1,12 @@
 """Functions for parsing virtual machine commands into their underlying fields."""
 from hdk.virtual_machine.syntax import (
     ArithmeticLogicalCommand,
-    Instruction,
     MemoryTransferCommand,
+    VMCommand,
 )
 
 
-def parse_vm_instruction(instruction_text: str) -> Instruction:
+def parse_vm_instruction(instruction_text: str) -> VMCommand:
     """Parses a symbolic Hack assembly instruction into its underlying fields.
 
     Args:

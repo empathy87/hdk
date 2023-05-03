@@ -4,10 +4,10 @@ from pathlib import Path
 
 from hdk.virtual_machine import code
 from hdk.virtual_machine.parser import parse_vm_instruction
-from hdk.virtual_machine.syntax import Instruction
+from hdk.virtual_machine.syntax import VMCommand
 
 
-def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
+def parse_source_code(lines: Iterable[str]) -> Iterator[VMCommand]:
     """Parses lines of the vm code into instruction objects.
 
     Args:
@@ -20,6 +20,7 @@ def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
         ValueError if a line of source code cannot be parsed.
     """
     for line_num, line in enumerate(lines):
+        line = line.strip()
         if len(line) == 0 or line.startswith("//"):
             continue
         try:
@@ -28,7 +29,7 @@ def parse_source_code(lines: Iterable[str]) -> Iterator[Instruction]:
             raise ValueError(f"Cannot parse line {line_num  + 1}.") from e
 
 
-def parse_program(source_path: Path) -> Iterator[Instruction]:
+def parse_program(source_path: Path) -> Iterator[VMCommand]:
     """Parses a vm program into instruction objects.
 
     Args:
@@ -57,6 +58,5 @@ def translate_program(source_path: Path) -> None:
     destination_path = source_path.parents[0] / (source_path.stem + ".asm")
     instructions = parse_program(source_path)
     with open(destination_path, "w") as output_file:
-        for assembly_code_list in code.translate(instructions):
-            for assembly_code_line in assembly_code_list:
-                output_file.write(assembly_code_line + "\n")
+        for assembly_code_line in code.translate(instructions):
+            output_file.write(assembly_code_line + "\n")

@@ -74,4 +74,4 @@ class MemoryTransferCommand:
 
 
 # An alias for type-hints representing virtual machine instructions.
-Instruction: TypeAlias = ArithmeticLogicalCommand | MemoryTransferCommand
+VMCommand: TypeAlias = ArithmeticLogicalCommand | MemoryTransferCommand
