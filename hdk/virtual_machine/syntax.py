@@ -1,6 +1,59 @@
 """Defines dataclasses that represent different types of vm commands."""
+import re
 from dataclasses import dataclass
 from typing import ClassVar, TypeAlias
+
+
+@dataclass(frozen=True)
+class BranchingCommand:
+    """Represents a Branching command in a virtual machine.
+
+    Attributes:
+        operation: The type of branching operation to be performed.
+        label_name: The symbol defined by the Label.
+    """
+
+    _ALLOWED_OPERATIONS: ClassVar[set[str]] = {"label", "goto", "if-goto"}
+
+    operation: str
+    label_name: str
+
+    def __post_init__(self):
+        cls = self.__class__
+        if not _is_symbol_valid(self.label_name):
+            raise ValueError(f"Invalid symbol {self.label_name!r} for Label.")
+        if self.operation not in cls._ALLOWED_OPERATIONS:
+            raise ValueError(
+                f"Wrong operation {self.operation!r} for branching command."
+            )
+
+
+@dataclass(frozen=True)
+class FunctionCommand:
+    """Represents a Branching command in a virtual machine.
+
+    Attributes:
+        operation: The type of branching operation to be performed.
+        function_name: The symbol defined by the Function.
+        n_vars_args: The number of variables or arguments.
+    """
+
+    _ALLOWED_OPERATIONS: ClassVar[set[str]] = {"function", "call", "return"}
+
+    operation: str
+    function_name: str | None
+    n_vars_args: int | None
+
+    def __post_init__(self):
+        cls = self.__class__
+        if self.function_name is not None and not _is_symbol_valid(self.function_name):
+            raise ValueError(
+                f"Invalid symbol {self.function_name!r} for function name."
+            )
+        if self.operation not in cls._ALLOWED_OPERATIONS:
+            raise ValueError(
+                f"Wrong operation {self.operation!r} for function command."
+            )
 
 
 @dataclass(frozen=True)
@@ -79,5 +132,35 @@ class MemoryTransferCommand:
             )
 
 
+def _is_symbol_valid(symbol: str) -> bool:
+    """Checks if a symbol is valid.
+
+    A symbol can be any sequence of letters, digits, underscores (_), dot (.),
+    dollar sign ($), and colon (:) that does not begin with a digit.
+
+    Args:
+        symbol: A string representing the symbol.
+
+    Returns:
+        True if the symbol is correct, False otherwise.
+
+    Typical usage example:
+        >>> _is_symbol_valid('_R0$:56.')
+        True
+        >>> _is_symbol_valid('5A')
+        False
+        >>> _is_symbol_valid('A97^')
+        False
+    """
+    if len(symbol) == 0 or symbol[0].isdigit():
+        return False
+    return re.fullmatch(r"[\w_$\.:]+", symbol) is not None
+
+
 # An alias for type-hints representing virtual machine instructions.
-VMCommand: TypeAlias = ArithmeticLogicalCommand | MemoryTransferCommand
+VMCommand: TypeAlias = (
+    ArithmeticLogicalCommand
+    | MemoryTransferCommand
+    | FunctionCommand
+    | BranchingCommand
+)

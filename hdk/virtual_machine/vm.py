@@ -58,5 +58,5 @@ def translate_program(source_path: Path) -> None:
     destination_path = source_path.parents[0] / (source_path.stem + ".asm")
     commands = parse_program(source_path)
     with open(destination_path, "w") as output_file:
-        for assembly_code_line in code.translate(commands):
+        for assembly_code_line in code.translate(commands, source_path.stem):
             output_file.write(assembly_code_line + "\n")
