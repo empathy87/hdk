@@ -41,7 +41,7 @@ class FunctionCallCommand:
     n_args: int
 
     def __post_init__(self):
-        if self.function_name is not None and not _is_symbol_valid(self.function_name):
+        if not _is_symbol_valid(self.function_name):
             raise ValueError(
                 f"Invalid symbol {self.function_name!r} for function name."
             )
@@ -60,7 +60,7 @@ class FunctionDefinitionCommand:
     n_vars: int
 
     def __post_init__(self):
-        if self.function_name is not None and not _is_symbol_valid(self.function_name):
+        if not _is_symbol_valid(self.function_name):
             raise ValueError(
                 f"Invalid symbol {self.function_name!r} for function name."
             )

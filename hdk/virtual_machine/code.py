@@ -97,7 +97,7 @@ def translate_function_call(command: FunctionCallCommand, command_id: int) -> li
     """Translates a call command into its assembly code.
 
     Args:
-        command: function call command to be translated.
+        command: Function call command to be translated.
         command_id: The current command number.
 
     Returns:
@@ -170,7 +170,7 @@ def translate_function_definition(command: FunctionDefinitionCommand) -> list[st
     """Translates a function definition command into its assembly code.
 
     Args:
-        command: function definition command to be translated.
+        command: Function definition command to be translated.
 
     Returns:
          A list of assembly code instructions.
@@ -235,7 +235,7 @@ def translate_push(segment: str, index: int, file_name: str = "None") -> list[st
     """Translates a push operation into assembly instructions.
 
     Args:
-        file_name:
+        file_name: The name of file to translate.
         segment: The memory segment for the push operation.
         index: The index within the memory segment for the push operation.
 
@@ -271,7 +271,7 @@ def translate_pop(segment: str, index: int, file_name: str = "None") -> list[str
     """Translates a pop operation into Hack assembly instructions.
 
     Args:
-        file_name:
+        file_name: The name of file to translate.
         segment: The memory segment for the pop operation.
         index: The index within the memory segment for the pop operation.
 
@@ -311,7 +311,7 @@ def translate_memory_transfer_command(
 ) -> list[str]:
     """Translates a MemoryTransferCommand into its assembly code.
     Args:
-        file_name:
+        file_name: The name of file to translate.
         command: The memory access instruction to be translated.
 
     Returns:
@@ -332,22 +332,23 @@ def translate(commands: Iterable[VMCommand], file_name: str) -> Iterator[str]:
     """Translate VM-commands into assembly symbolic instructions.
 
     Args:
-        file_name:
+        file_name: The name of file to translate.
         commands: An iterable of commands to be translated.
 
     Yields:
         Strings representing the assembly code for each command.
     """
     for command_id, command in enumerate(commands):
-        if isinstance(command, ArithmeticLogicalCommand):
-            yield from translate_arithmetic_logical_command(command, command_id)
-        elif isinstance(command, BranchingCommand):
-            yield from translate_branching_command(command)
-        elif isinstance(command, FunctionCallCommand):
-            yield from translate_function_call(command, command_id)
-        elif isinstance(command, ReturnCommand):
-            yield from translate_return()
-        elif isinstance(command, FunctionDefinitionCommand):
-            yield from translate_function_definition(command)
-        else:
-            yield from translate_memory_transfer_command(command, file_name)
+        match command:
+            case ArithmeticLogicalCommand():
+                yield from translate_arithmetic_logical_command(command, command_id)
+            case BranchingCommand():
+                yield from translate_branching_command(command)
+            case FunctionDefinitionCommand():
+                yield from translate_function_definition(command)
+            case FunctionCallCommand():
+                yield from translate_function_call(command, command_id)
+            case ReturnCommand():
+                yield from translate_return()
+            case MemoryTransferCommand():
+                yield from translate_memory_transfer_command(command, file_name)
