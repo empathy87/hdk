@@ -97,7 +97,7 @@ def translate_function_call(command: FunctionCallCommand, command_id: int) -> li
     """Translates a call command into its assembly code.
 
     Args:
-        command: Function call command to be translated.
+        command: The function call command to be translated.
         command_id: The current command number.
 
     Returns:
@@ -170,14 +170,14 @@ def translate_function_definition(command: FunctionDefinitionCommand) -> list[st
     """Translates a function definition command into its assembly code.
 
     Args:
-        command: Function definition command to be translated.
+        command: The function definition command to be translated.
 
     Returns:
          A list of assembly code instructions.
     """
     initialize_locals = []
     for _ in range(command.n_vars):
-        initialize_locals += translate_push("constant", 0) + _SAVE_D_INSTRUCTIONS
+        initialize_locals += translate_push("constant", 0, "") + _SAVE_D_INSTRUCTIONS
     return [f"({command.function_name})"] + initialize_locals
 
 
@@ -231,11 +231,11 @@ def translate_arithmetic_logical_command(
     )
 
 
-def translate_push(segment: str, index: int, file_name: str = "None") -> list[str]:
+def translate_push(segment: str, index: int, file_name: str) -> list[str]:
     """Translates a push operation into assembly instructions.
 
     Args:
-        file_name: The name of file to translate.
+        file_name: The name of the file to translate.
         segment: The memory segment for the push operation.
         index: The index within the memory segment for the push operation.
 
@@ -267,11 +267,11 @@ def translate_push(segment: str, index: int, file_name: str = "None") -> list[st
     raise ValueError(f"Wrong segment {segment!r} for VMcommand.")
 
 
-def translate_pop(segment: str, index: int, file_name: str = "None") -> list[str]:
+def translate_pop(segment: str, index: int, file_name) -> list[str]:
     """Translates a pop operation into Hack assembly instructions.
 
     Args:
-        file_name: The name of file to translate.
+        file_name: The name of the file to translate.
         segment: The memory segment for the pop operation.
         index: The index within the memory segment for the pop operation.
 
@@ -311,7 +311,7 @@ def translate_memory_transfer_command(
 ) -> list[str]:
     """Translates a MemoryTransferCommand into its assembly code.
     Args:
-        file_name: The name of file to translate.
+        file_name: The name of the file to translate.
         command: The memory access instruction to be translated.
 
     Returns:
@@ -332,7 +332,7 @@ def translate(commands: Iterable[VMCommand], file_name: str) -> Iterator[str]:
     """Translate VM-commands into assembly symbolic instructions.
 
     Args:
-        file_name: The name of file to translate.
+        file_name: The name of the file to translate.
         commands: An iterable of commands to be translated.
 
     Yields:
