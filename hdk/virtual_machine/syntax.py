@@ -1,6 +1,74 @@
 """Defines dataclasses that represent different types of vm commands."""
+import re
 from dataclasses import dataclass
 from typing import ClassVar, TypeAlias
+
+
+@dataclass(frozen=True)
+class BranchingCommand:
+    """Represents a Branching command in a virtual machine.
+
+    Attributes:
+        operation: The type of branching operation to be performed.
+        label_name: The symbol defined by the Label.
+    """
+
+    _ALLOWED_OPERATIONS: ClassVar[set[str]] = {"label", "goto", "if-goto"}
+
+    operation: str
+    label_name: str
+
+    def __post_init__(self):
+        cls = self.__class__
+        if not _is_symbol_valid(self.label_name):
+            raise ValueError(f"Invalid symbol {self.label_name!r} for Label.")
+        if self.operation not in cls._ALLOWED_OPERATIONS:
+            raise ValueError(
+                f"Wrong operation {self.operation!r} for branching command."
+            )
+
+
+@dataclass(frozen=True)
+class FunctionCallCommand:
+    """Represents a call command in a virtual machine.
+
+    Attributes:
+        function_name: The symbol defined by the Function.
+        n_args: The number of arguments.
+    """
+
+    function_name: str
+    n_args: int
+
+    def __post_init__(self):
+        if not _is_symbol_valid(self.function_name):
+            raise ValueError(
+                f"Invalid symbol {self.function_name!r} for function name."
+            )
+
+
+@dataclass(frozen=True)
+class FunctionDefinitionCommand:
+    """Represents a function definition command in a virtual machine.
+
+    Attributes:
+        function_name: The symbol defined by the Function.
+        n_vars: The number of variables or arguments.
+    """
+
+    function_name: str
+    n_vars: int
+
+    def __post_init__(self):
+        if not _is_symbol_valid(self.function_name):
+            raise ValueError(
+                f"Invalid symbol {self.function_name!r} for function name."
+            )
+
+
+@dataclass(frozen=True)
+class ReturnCommand:
+    """Represents a return command in a virtual machine."""
 
 
 @dataclass(frozen=True)
@@ -79,5 +147,37 @@ class MemoryTransferCommand:
             )
 
 
+def _is_symbol_valid(symbol: str) -> bool:
+    """Checks if a symbol is valid.
+
+    A symbol can be any sequence of letters, digits, underscores (_), dot (.),
+    dollar sign ($), and colon (:) that does not begin with a digit.
+
+    Args:
+        symbol: A string representing the symbol.
+
+    Returns:
+        True if the symbol is correct, False otherwise.
+
+    Typical usage example:
+        >>> _is_symbol_valid('_R0$:56.')
+        True
+        >>> _is_symbol_valid('5A')
+        False
+        >>> _is_symbol_valid('A97^')
+        False
+    """
+    if len(symbol) == 0 or symbol[0].isdigit():
+        return False
+    return re.fullmatch(r"[\w_$\.:]+", symbol) is not None
+
+
 # An alias for type-hints representing virtual machine instructions.
-VMCommand: TypeAlias = ArithmeticLogicalCommand | MemoryTransferCommand
+VMCommand: TypeAlias = (
+    ArithmeticLogicalCommand
+    | MemoryTransferCommand
+    | FunctionDefinitionCommand
+    | ReturnCommand
+    | FunctionCallCommand
+    | BranchingCommand
+)
