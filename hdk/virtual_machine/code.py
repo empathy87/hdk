@@ -4,8 +4,10 @@ from collections.abc import Iterable, Iterator
 from hdk.virtual_machine.syntax import (
     ArithmeticLogicalCommand,
     BranchingCommand,
-    FunctionCommand,
+    FunctionCallCommand,
+    FunctionDefinitionCommand,
     MemoryTransferCommand,
+    ReturnCommand,
     VMCommand,
 )
 
@@ -78,30 +80,31 @@ def translate_branching_command(command: BranchingCommand) -> list[str]:
     Returns:
          A list of assembly code instructions.
     """
-    if command.operation == "label":
-        return translate_label(command.label_name)
-    if command.operation == "goto":
-        return translate_goto(command.label_name)
-    if command.operation == "if-goto":
-        return translate_if_goto(command.label_name)
-    raise ValueError(f"Wrong operation {command.operation!r} for branching command.")
+    match command.operation:
+        case "label":
+            return translate_label(command.label_name)
+        case "goto":
+            return translate_goto(command.label_name)
+        case "if-goto":
+            return translate_if_goto(command.label_name)
+        case _:
+            raise ValueError(
+                f"Wrong operation {command.operation!r} for branching command."
+            )
 
 
-def translate_call(
-    function_name: str, n_args: int | None, command_id: int
-) -> list[str]:
+def translate_function_call(command: FunctionCallCommand, command_id: int) -> list[str]:
     """Translates a call command into its assembly code.
 
     Args:
-        function_name: The symbol defined by the function.
-        n_args: The number of arguments.
+        command: function call command to be translated.
         command_id: The current command number.
 
     Returns:
         A list of assembly code instructions.
     """
     output = [
-        f"@{function_name}{command_id}",
+        f"@{command.function_name}{command_id}",
         "D=A",
         "@SP",
         "A=M",
@@ -116,7 +119,7 @@ def translate_call(
         "D=M",
         "@5",
         "D=D-A",
-        f"@{n_args}",
+        f"@{command.n_args}",
         "D=D-A",
         "@ARG",
         "M=D",
@@ -124,9 +127,9 @@ def translate_call(
         "D=M",
         "@LCL",
         "M=D",
-        f"@{function_name}",
+        f"@{command.function_name}",
         "0;JMP",
-        f"({function_name}{command_id})",
+        f"({command.function_name}{command_id})",
     ]
     return output
 
@@ -163,41 +166,19 @@ def translate_return():
     return output + ["@R14", "A=M", "0;JMP"]
 
 
-def translate_function(function_name: str, n_vars: int | None) -> list[str]:
-    """Translates a function command into its assembly code.
+def translate_function_definition(command: FunctionDefinitionCommand) -> list[str]:
+    """Translates a function definition command into its assembly code.
 
     Args:
-        function_name: The symbol defined by the function.
-        n_vars: The number of the function's variables.
+        command: function definition command to be translated.
 
     Returns:
          A list of assembly code instructions.
     """
     initialize_locals = []
-    for _ in range(n_vars if n_vars is not None else 0):
+    for _ in range(command.n_vars):
         initialize_locals += translate_push("constant", 0) + _SAVE_D_INSTRUCTIONS
-    return [f"({function_name})"] + initialize_locals
-
-
-def translate_function_command(command: FunctionCommand, command_id) -> list[str]:
-    """Translates a FunctionCommand into its assembly code.
-
-    Args:
-        command: The FunctionCommand to translate.
-        command_id: The current command number.
-
-    Returns:
-         A list of assembly code instructions.
-    """
-    if command.operation == "return":
-        return translate_return()
-    if command.operation == "call":
-        return translate_call(
-            str(command.function_name), command.n_vars_args, command_id
-        )
-    if command.operation == "function":
-        return translate_function(str(command.function_name), command.n_vars_args)
-    raise ValueError(f"Invalid command {command.operation!r} for function command.")
+    return [f"({command.function_name})"] + initialize_locals
 
 
 def translate_arithmetic_logical_command(
@@ -362,7 +343,11 @@ def translate(commands: Iterable[VMCommand], file_name: str) -> Iterator[str]:
             yield from translate_arithmetic_logical_command(command, command_id)
         elif isinstance(command, BranchingCommand):
             yield from translate_branching_command(command)
-        elif isinstance(command, FunctionCommand):
-            yield from translate_function_command(command, command_id)
+        elif isinstance(command, FunctionCallCommand):
+            yield from translate_function_call(command, command_id)
+        elif isinstance(command, ReturnCommand):
+            yield from translate_return()
+        elif isinstance(command, FunctionDefinitionCommand):
+            yield from translate_function_definition(command)
         else:
             yield from translate_memory_transfer_command(command, file_name)

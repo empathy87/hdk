@@ -2,14 +2,15 @@
 from hdk.virtual_machine.syntax import (
     ArithmeticLogicalCommand,
     BranchingCommand,
-    FunctionCommand,
+    FunctionCallCommand,
+    FunctionDefinitionCommand,
     MemoryTransferCommand,
+    ReturnCommand,
     VMCommand,
 )
 
 
 def parse_vm_command(line: str) -> VMCommand:
-    line = line.partition("//")[0]
     """Parses a symbolic vm command into its underlying fields.
 
     Args:
@@ -25,6 +26,7 @@ def parse_vm_command(line: str) -> VMCommand:
         >>> parse_vm_command('add')
         ArithmeticLogicalCommand(command='add')
     """
+    line = line.partition("//")[0]
     if line.startswith("push") or line.startswith("pop"):
         operation, segment, idx = line.split()
         return MemoryTransferCommand(
@@ -38,12 +40,17 @@ def parse_vm_command(line: str) -> VMCommand:
         operation, label_name = line.split()
         return BranchingCommand(operation=operation, label_name=label_name)
     if line.startswith("return"):
-        return FunctionCommand(operation="return", function_name=None, n_vars_args=None)
-    if line.startswith("function") or line.startswith("call"):
-        operation, function_name, n_vars_args = line.split()
-        return FunctionCommand(
-            operation=operation,
+        return ReturnCommand()
+    if line.startswith("function"):
+        operation, function_name, n_vars = line.split()
+        return FunctionDefinitionCommand(
             function_name=function_name,
-            n_vars_args=int(n_vars_args),
+            n_vars=int(n_vars),
+        )
+    if line.startswith("call"):
+        operation, function_name, n_args = line.split()
+        return FunctionCallCommand(
+            function_name=function_name,
+            n_args=int(n_args),
         )
     return ArithmeticLogicalCommand(operation=line.split()[0])

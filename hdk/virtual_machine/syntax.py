@@ -29,31 +29,46 @@ class BranchingCommand:
 
 
 @dataclass(frozen=True)
-class FunctionCommand:
-    """Represents a Branching command in a virtual machine.
+class FunctionCallCommand:
+    """Represents a call command in a virtual machine.
 
     Attributes:
-        operation: The type of branching operation to be performed.
         function_name: The symbol defined by the Function.
-        n_vars_args: The number of variables or arguments.
+        n_args: The number of arguments.
     """
 
-    _ALLOWED_OPERATIONS: ClassVar[set[str]] = {"function", "call", "return"}
-
-    operation: str
-    function_name: str | None
-    n_vars_args: int | None
+    function_name: str
+    n_args: int
 
     def __post_init__(self):
-        cls = self.__class__
         if self.function_name is not None and not _is_symbol_valid(self.function_name):
             raise ValueError(
                 f"Invalid symbol {self.function_name!r} for function name."
             )
-        if self.operation not in cls._ALLOWED_OPERATIONS:
+
+
+@dataclass(frozen=True)
+class FunctionDefinitionCommand:
+    """Represents a function definition command in a virtual machine.
+
+    Attributes:
+        function_name: The symbol defined by the Function.
+        n_vars: The number of variables or arguments.
+    """
+
+    function_name: str
+    n_vars: int
+
+    def __post_init__(self):
+        if self.function_name is not None and not _is_symbol_valid(self.function_name):
             raise ValueError(
-                f"Wrong operation {self.operation!r} for function command."
+                f"Invalid symbol {self.function_name!r} for function name."
             )
+
+
+@dataclass(frozen=True)
+class ReturnCommand:
+    """Represents a return command in a virtual machine."""
 
 
 @dataclass(frozen=True)
@@ -161,6 +176,8 @@ def _is_symbol_valid(symbol: str) -> bool:
 VMCommand: TypeAlias = (
     ArithmeticLogicalCommand
     | MemoryTransferCommand
-    | FunctionCommand
+    | FunctionDefinitionCommand
+    | ReturnCommand
+    | FunctionCallCommand
     | BranchingCommand
 )
