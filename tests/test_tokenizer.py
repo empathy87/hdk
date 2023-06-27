@@ -3,7 +3,7 @@ from pathlib import Path
 
 from _pytest.fixtures import fixture
 
-from hdk.jack_analyzer.tokenizer import get_tokens
+from hdk.jack_analyzer.tokenizer import parse_program, to_xml
 
 
 @fixture
@@ -30,14 +30,13 @@ def test_translate_correct_programs(tmpdir_with_programs):
     for path in programs:
         full_path = tmpdir_with_programs / path
 
-        dom_tree = get_tokens(full_path)
-        z1 = tmpdir_with_programs / path.split("\\")[0] / (full_path.stem + "_myT.xml")
-        with open(z1, "w") as f:
+        dom_tree = to_xml(parse_program(full_path))
+        output_file = full_path.parents[0] / (full_path.stem + "_myT.xml")
+        with open(output_file, "w") as f:
             f.write(dom_tree.childNodes[0].toprettyxml())
-
-        z2 = tmpdir_with_programs / path.split("\\")[0] / (full_path.stem + "T.xml")
-        f1 = z1.open().readlines()
-        f2 = z2.open().readlines()
+        compared_to_file = full_path.parents[0] / (full_path.stem + "T.xml")
+        f1 = output_file.open().readlines()
+        f2 = compared_to_file.open().readlines()
         for i in range(max(len(f1), len(f2))):
             line1 = f1[i].replace(" ", "").replace("\t", "") if i < len(f1) else ""
             line2 = f2[i].replace(" ", "").replace("\t", "") if i < len(f1) else ""

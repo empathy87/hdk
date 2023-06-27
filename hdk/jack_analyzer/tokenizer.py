@@ -1,47 +1,101 @@
 import xml.dom.minidom
 from collections.abc import Iterable, Iterator
+from enum import Enum
 from pathlib import Path
+from typing import NamedTuple
 
-from hdk.jack_analyzer.syntax_tokens import (
-    ALLOWED_KEYWORDS,
-    ALLOWED_LEXICAL_ELEMENTS,
-    ALLOWED_SYMBOLS,
-    Token,
-    TokenType,
-)
+
+class TokenType(Enum):
+    KEYWORD = 0
+    SYMBOL = 1
+    INTEGER_CONSTANT = 2
+    STRING_CONSTANT = 3
+    IDENTIFIER = 4
+
+
+_KEYWORDS: set[str] = {
+    "class",
+    "method",
+    "function",
+    "constructor",
+    "int",
+    "boolean",
+    "char",
+    "var",
+    "static",
+    "field",
+    "let",
+    "do",
+    "if",
+    "else",
+    "while",
+    "return",
+    "true",
+    "false",
+    "null",
+    "this",
+    "void",
+}
+
+ALLOWED_SYMBOLS: set[str] = {
+    "{",
+    "}",
+    "(",
+    ")",
+    "[",
+    "]",
+    ".",
+    ",",
+    ";",
+    "+",
+    "-",
+    "*",
+    "/",
+    "&",
+    "|",
+    "~",
+    "<",
+    ">",
+    "=",
+}
+
+
+class Token(NamedTuple):
+    token_type: TokenType
+    value: str
 
 
 def parse_line(line: str) -> Iterator[Token]:
-    cur_tok = ""
-    for s in line:
-        if s in ALLOWED_SYMBOLS:
-            if cur_tok != "":
-                yield parse_token(cur_tok)
-            yield parse_token(s)
-            cur_tok = ""
-        elif s == " " and (len(cur_tok) == 0 or cur_tok[0] != '"'):
-            if cur_tok != "":
-                yield parse_token(cur_tok)
-            cur_tok = ""
+    current_token = ""
+    for char in line:
+        if char in ALLOWED_SYMBOLS:
+            if current_token != "":
+                yield parse_token(current_token)
+            yield parse_token(char)
+            current_token = ""
+        elif char == " " and (len(current_token) == 0 or current_token[0] != '"'):
+            if current_token != "":
+                yield parse_token(current_token)
+            current_token = ""
         else:
-            cur_tok += s
-            if cur_tok[0] == cur_tok[-1] == '"' and len(cur_tok) != 1:
-                yield parse_token(cur_tok)
-                cur_tok = ""
-    if cur_tok != "":
-        yield parse_token(cur_tok)
+            current_token += char
+            if current_token[0] == current_token[-1] == '"' and len(current_token) != 1:
+                yield parse_token(current_token)
+                current_token = ""
+    if current_token != "":
+        yield parse_token(current_token)
 
 
 def parse_token(tok: str) -> Token:
     if tok in ALLOWED_SYMBOLS:
-        return Token(TokenType.Symbol, tok)
-    if tok in ALLOWED_KEYWORDS:
-        return Token(TokenType.Keyword, tok)
+        return Token(TokenType.SYMBOL, tok)
+    if tok in _KEYWORDS:
+        return Token(TokenType.KEYWORD, tok)
     if tok.isdigit():
-        return Token(TokenType.IntegerConstant, tok)
+        return Token(TokenType.INTEGER_CONSTANT, tok)
     if tok[0] == '"' and tok[-1] == '"':
-        return Token(TokenType.StringConstant, tok[1:-1])
-    return Token(TokenType.Identifier, tok)
+        return Token(TokenType.STRING_CONSTANT, tok[1:-1])
+    return Token(TokenType.IDENTIFIER, tok)
 
 
 def parse_source_code(lines: Iterable[str]) -> Iterator[Token]:
@@ -70,15 +124,17 @@ def parse_program(source_path: Path) -> Iterator[Token]:
 
 
 def to_xml(tokens: Iterable[Token]) -> xml.dom.minidom.Document:
+    ALLOWED_LEXICAL_ELEMENTS: dict[TokenType, str] = {
+        TokenType.KEYWORD: "keyword",
+        TokenType.SYMBOL: "symbol",
+        TokenType.INTEGER_CONSTANT: "integerConstant",
+        TokenType.STRING_CONSTANT: "stringConstant",
+        TokenType.IDENTIFIER: "identifier",
+    }
+
     dom_tree = xml.dom.minidom.parseString("<tokens></tokens>")
     for token in tokens:
-        newToken = dom_tree.createElement(
-            ALLOWED_LEXICAL_ELEMENTS[token.token_type.value]
-        )
+        newToken = dom_tree.createElement(ALLOWED_LEXICAL_ELEMENTS[token.token_type])
         newToken.appendChild(dom_tree.createTextNode(token.value))
         dom_tree.childNodes[0].appendChild(newToken)
     return dom_tree
-
-
-def get_tokens(source_path: Path) -> xml.dom.minidom.Document:
-    return to_xml(parse_program(source_path))
