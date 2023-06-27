@@ -36,10 +36,11 @@ def test_translate_correct_programs(tmpdir_with_programs):
         with open(output_file_path, "w") as f:
             f.write(dom_tree.childNodes[0].toprettyxml())
         compared_to_file_path = full_path.parents[0] / (full_path.stem + "T.xml")
-        output_file = output_file_path.open().readlines()
-        compared_to_file = compared_to_file_path.open().readlines()
-        for i in range(max(len(output_file), len(compared_to_file))):
-            itertools.zip_longest(output_file, compared_to_file, "")
-            line1 = output_file[i].replace(" ", "").replace("\t", "")
-            line2 = compared_to_file[i].replace(" ", "").replace("\t", "")
+        output_file_lines = output_file_path.open().readlines()
+        compared_to_file_lines = compared_to_file_path.open().readlines()
+        for line1, line2 in itertools.zip_longest(
+            output_file_lines, compared_to_file_lines, fillvalue=""
+        ):
+            line1 = line1.replace(" ", "").replace("\t", "")
+            line2 = line2.replace(" ", "").replace("\t", "")
             assert line1 == line2, f"Program {path} {line1} instead of {line2}."
