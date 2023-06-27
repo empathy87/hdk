@@ -1,3 +1,4 @@
+import itertools
 import shutil
 from pathlib import Path
 
@@ -31,13 +32,14 @@ def test_translate_correct_programs(tmpdir_with_programs):
         full_path = tmpdir_with_programs / path
 
         dom_tree = to_xml(parse_program(full_path))
-        output_file = full_path.parents[0] / (full_path.stem + "_myT.xml")
-        with open(output_file, "w") as f:
+        output_file_path = full_path.parents[0] / (full_path.stem + "_myT.xml")
+        with open(output_file_path, "w") as f:
             f.write(dom_tree.childNodes[0].toprettyxml())
-        compared_to_file = full_path.parents[0] / (full_path.stem + "T.xml")
-        f1 = output_file.open().readlines()
-        f2 = compared_to_file.open().readlines()
-        for i in range(max(len(f1), len(f2))):
-            line1 = f1[i].replace(" ", "").replace("\t", "") if i < len(f1) else ""
-            line2 = f2[i].replace(" ", "").replace("\t", "") if i < len(f1) else ""
+        compared_to_file_path = full_path.parents[0] / (full_path.stem + "T.xml")
+        output_file = output_file_path.open().readlines()
+        compared_to_file = compared_to_file_path.open().readlines()
+        for i in range(max(len(output_file), len(compared_to_file))):
+            itertools.zip_longest(output_file, compared_to_file, "")
+            line1 = output_file[i].replace(" ", "").replace("\t", "")
+            line2 = compared_to_file[i].replace(" ", "").replace("\t", "")
             assert line1 == line2, f"Program {path} {line1} instead of {line2}."

@@ -37,7 +37,7 @@ _KEYWORDS: set[str] = {
     "void",
 }
 
-ALLOWED_SYMBOLS: set[str] = {
+_SYMBOLS: set[str] = {
     "{",
     "}",
     "(",
@@ -68,7 +68,7 @@ class Token(NamedTuple):
 def parse_line(line: str) -> Iterator[Token]:
     current_token = ""
     for char in line:
-        if char in ALLOWED_SYMBOLS:
+        if char in _SYMBOLS:
             if current_token != "":
                 yield parse_token(current_token)
             yield parse_token(char)
@@ -87,7 +87,7 @@ def parse_line(line: str) -> Iterator[Token]:
 
 
 def parse_token(tok: str) -> Token:
-    if tok in ALLOWED_SYMBOLS:
+    if tok in _SYMBOLS:
         return Token(TokenType.SYMBOL, tok)
     if tok in _KEYWORDS:
         return Token(TokenType.KEYWORD, tok)
@@ -124,7 +124,7 @@ def parse_program(source_path: Path) -> Iterator[Token]:
 
 
 def to_xml(tokens: Iterable[Token]) -> xml.dom.minidom.Document:
-    ALLOWED_LEXICAL_ELEMENTS: dict[TokenType, str] = {
+    type_to_tag: dict[TokenType, str] = {
         TokenType.KEYWORD: "keyword",
         TokenType.SYMBOL: "symbol",
         TokenType.INTEGER_CONSTANT: "integerConstant",
@@ -134,7 +134,7 @@ def to_xml(tokens: Iterable[Token]) -> xml.dom.minidom.Document:
 
     dom_tree = xml.dom.minidom.parseString("<tokens></tokens>")
     for token in tokens:
-        newToken = dom_tree.createElement(ALLOWED_LEXICAL_ELEMENTS[token.token_type])
+        newToken = dom_tree.createElement(type_to_tag[token.token_type])
         newToken.appendChild(dom_tree.createTextNode(token.value))
         dom_tree.childNodes[0].appendChild(newToken)
     return dom_tree
