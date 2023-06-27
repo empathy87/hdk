@@ -86,16 +86,16 @@ def parse_line(line: str) -> Iterator[Token]:
         yield parse_token(current_token)
 
 
-def parse_token(tok: str) -> Token:
-    if tok in _SYMBOLS:
-        return Token(TokenType.SYMBOL, tok)
-    if tok in _KEYWORDS:
-        return Token(TokenType.KEYWORD, tok)
-    if tok.isdigit():
-        return Token(TokenType.INTEGER_CONSTANT, tok)
-    if tok[0] == '"' and tok[-1] == '"':
-        return Token(TokenType.STRING_CONSTANT, tok[1:-1])
-    return Token(TokenType.IDENTIFIER, tok)
+def parse_token(token: str) -> Token:
+    if token in _SYMBOLS:
+        return Token(TokenType.SYMBOL, token)
+    if token in _KEYWORDS:
+        return Token(TokenType.KEYWORD, token)
+    if token.isdigit():
+        return Token(TokenType.INTEGER_CONSTANT, token)
+    if token[0] == '"' and token[-1] == '"':
+        return Token(TokenType.STRING_CONSTANT, token[1:-1])
+    return Token(TokenType.IDENTIFIER, token)
 
 
 def parse_source_code(lines: Iterable[str]) -> Iterator[Token]:

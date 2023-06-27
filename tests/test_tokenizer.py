@@ -35,11 +35,11 @@ def test_translate_correct_programs(tmpdir_with_programs):
         output_file_path = full_path.parents[0] / (full_path.stem + "_myT.xml")
         with open(output_file_path, "w") as f:
             f.write(dom_tree.childNodes[0].toprettyxml())
-        compared_to_file_path = full_path.parents[0] / (full_path.stem + "T.xml")
-        output_file_lines = output_file_path.open().readlines()
-        compared_to_file_lines = compared_to_file_path.open().readlines()
+        compare_to_file_path = full_path.parents[0] / (full_path.stem + "T.xml")
+        output_lines = output_file_path.open().readlines()
+        compare_to_lines = compare_to_file_path.open().readlines()
         for line1, line2 in itertools.zip_longest(
-            output_file_lines, compared_to_file_lines, fillvalue=""
+            output_lines, compare_to_lines, fillvalue=""
         ):
             line1 = line1.replace(" ", "").replace("\t", "")
             line2 = line2.replace(" ", "").replace("\t", "")
