@@ -3,7 +3,7 @@ from pathlib import Path
 
 from _pytest.fixtures import fixture
 
-from hdk.jack_analyzer.lex_analyzer import get_tokens
+from hdk.jack_analyzer.tokenizer import get_tokens
 
 
 @fixture
@@ -29,8 +29,12 @@ def test_translate_correct_programs(tmpdir_with_programs):
     ]
     for path in programs:
         full_path = tmpdir_with_programs / path
-        get_tokens(full_path)
+
+        dom_tree = get_tokens(full_path)
         z1 = tmpdir_with_programs / path.split("\\")[0] / (full_path.stem + "_myT.xml")
+        with open(z1, "w") as f:
+            f.write(dom_tree.childNodes[0].toprettyxml())
+
         z2 = tmpdir_with_programs / path.split("\\")[0] / (full_path.stem + "T.xml")
         f1 = z1.open().readlines()
         f2 = z2.open().readlines()
