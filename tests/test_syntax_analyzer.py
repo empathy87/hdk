@@ -1,11 +1,21 @@
 import shutil
 import xml.dom.minidom
 from pathlib import Path
-from xml.dom.minidom import Element
+from xml.dom.minidom import Element, Document
 
 from _pytest.fixtures import fixture
-
-from hdk.jack_analyzer.parser import parse_tokens
+from hdk.jack_analyzer.syntax import (
+    Identifier,
+    Class,
+    Statements,
+    Statement,
+    SubroutineType,
+    SubroutineDec,
+    SubroutineReturnType,
+    ParameterList,
+    SubroutineBody,
+    ReturnStatement
+)
 from hdk.jack_analyzer.tokenizer import parse_program, to_xml
 
 
@@ -64,23 +74,57 @@ def test_tokenizer_programs(tmpdir_with_programs):
         ), "Error."
 
 
+# def test_parser_program(tmpdir_with_programs):
+#     programs = [
+        "ArrayTest\\Main.jack",
+        # "ExpressionLessSquare\\Main.jack",
+        "ExpressionLessSquare\\Square.jack",
+        "ExpressionLessSquare\\SquareGame.jack",
+        "Square\\Main.jack",
+        "Square\\Square.jack",
+        "Square\\SquareGame.jack",
+    # ]
+    # for path in programs:
+    #     full_path = tmpdir_with_programs / path
+    #     tokens_path = full_path.parents[0] / (full_path.stem + "T.xml")
+    #     my_dom_tree = parse_tokens(str(tokens_path))
+    #     compare_to_file_path = full_path.parents[0] / (full_path.stem + ".xml")
+    #     f = "".join("".join(open(compare_to_file_path).read().split("\n")).split())
+    #     compare_to_dom_tree = xml.dom.minidom.parseString(f)
+    #     assert compare_elements(
+    #         my_dom_tree.childNodes[0], compare_to_dom_tree.childNodes[0]
+    #     ), "Error."
+
+
 def test_parser_program(tmpdir_with_programs):
-    programs = [
-        # "ArrayTest\\Main.jack",
-        "ExpressionLessSquare\\Main.jack",
-        # "ExpressionLessSquare\\Square.jack",
-        # "ExpressionLessSquare\\SquareGame.jack",
-        # "Square\\Main.jack",
-        # "Square\\Square.jack",
-        # "Square\\SquareGame.jack",
-    ]
-    for path in programs:
-        full_path = tmpdir_with_programs / path
-        tokens_path = full_path.parents[0] / (full_path.stem + "T.xml")
-        my_dom_tree = parse_tokens(str(tokens_path))
-        compare_to_file_path = full_path.parents[0] / (full_path.stem + ".xml")
-        f = "".join("".join(open(compare_to_file_path).read().split("\n")).split())
-        compare_to_dom_tree = xml.dom.minidom.parseString(f)
-        assert compare_elements(
-            my_dom_tree.childNodes[0], compare_to_dom_tree.childNodes[0]
-        ), "Error."
+    A = Class(
+        class_name=Identifier(value="Main"),
+        subroutine_dec_list=[
+            SubroutineDec(
+                subroutine_type=SubroutineType.FUNCTION,
+                subroutine_return_type=SubroutineReturnType.VOID,
+                subroutine_name=Identifier(value="main"),
+                parameter_list=ParameterList(parameter_list=[]),
+                subroutine_body=SubroutineBody(
+                    var_dec_list=[],
+                    statements=Statements(
+                        statements_list=[
+                            Statement(
+                                statement=ReturnStatement(expression=None)
+                            )
+                        ]
+                    )
+                )
+            )
+        ]
+    )
+
+    d_tree = Document()
+    a = A.export_to_xml(d_tree)
+    d_tree.appendChild(a)
+    file_to_compare_read = open("C:\\HDK\\hdk\\tests\\test_syntax_analyzer_data\\MyTest\\Main.xml").read()
+    string_to_compare = file_to_compare_read.replace(" ", "").replace("\n", "").replace("\t", "")
+    compare_to_tree = xml.dom.minidom.parseString(string_to_compare)
+    assert compare_elements(
+        d_tree.childNodes[0], compare_to_tree.childNodes[0]
+    ), "Error."

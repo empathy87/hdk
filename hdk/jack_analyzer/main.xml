@@ -1,0 +1,24 @@
+<class>
+	<keyword>class</keyword>
+	<keyword>Main</keyword>
+	<symbol>{</symbol>
+	<subroutineDec>
+		<keyword>function</keyword>
+		<keyword>void</keyword>
+		<keyword>main</keyword>
+		<symbol>(</symbol>
+		<parameterList/>
+		<symbol>)</symbol>
+		<subroutineBody>
+			<symbol>{</symbol>
+			<statements>
+				<returnStatement>
+					<keyword>return</keyword>
+					<symbol>;</symbol>
+				</returnStatement>
+			</statements>
+			<symbol>}</symbol>
+		</subroutineBody>
+	</subroutineDec>
+	<symbol>}</symbol>
+</class>
