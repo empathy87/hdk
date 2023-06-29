@@ -138,5 +138,3 @@ def to_xml(tokens: Iterable[Token]) -> xml.dom.minidom.Document:
         newToken.appendChild(dom_tree.createTextNode(token.value))
         dom_tree.childNodes[0].appendChild(newToken)
     return dom_tree
-
-
