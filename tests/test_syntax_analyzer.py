@@ -5,17 +5,7 @@ from xml.dom.minidom import Document, Element
 
 from _pytest.fixtures import fixture
 
-from hdk.jack_analyzer.syntax import (
-    Class,
-    ParameterList,
-    ReturnStatement,
-    Statement,
-    Statements,
-    SubroutineBody,
-    SubroutineDec,
-    SubroutineReturnType,
-    SubroutineType,
-)
+from hdk.jack_analyzer.syntax import Class, ReturnStatement, Subroutine
 from hdk.jack_analyzer.tokenizer import parse_program, to_xml
 
 
@@ -97,21 +87,15 @@ def test_tokenizer_programs(tmpdir_with_programs):
 
 def test_parser_program(tmpdir_with_programs):
     A = Class(
-        class_name="Main",
-        subroutine_dec_list=[
-            SubroutineDec(
-                subroutine_type=SubroutineType.FUNCTION,
-                subroutine_return_type=SubroutineReturnType.VOID,
-                subroutine_name="main",
-                parameter_list=ParameterList(parameter_list=[]),
-                subroutine_body=SubroutineBody(
-                    var_dec_list=[],
-                    statements=Statements(
-                        statements_list=[
-                            Statement(statement=ReturnStatement(expression=None))
-                        ]
-                    ),
-                ),
+        name="Main",
+        subroutines=[
+            Subroutine(
+                type_="function",
+                return_type="void",
+                name="main",
+                parameters=[],
+                variables=[],
+                statements=[ReturnStatement(expression=None)],
             )
         ],
     )

@@ -1,40 +1,14 @@
 from dataclasses import dataclass
-from enum import Enum
+from typing import TypeAlias
 from xml.dom.minidom import Document, Element
 
 
-def create_simple_element(dom_tree: Document, tag_name: str, value: str) -> Element:
-    element = dom_tree.createElement(tag_name)
-    element.appendChild(dom_tree.createTextNode(value))
-    return element
-
-
-class SubroutineType(Enum):
-    CONSTRUCTOR = 0
-    FUNCTION = 1
-    METHOD = 2
-
-
-_type_to_str: dict[str, str] = {
-    "CONSTRUCTOR": "constructor",
-    "FUNCTION": "function",
-    "METHOD": "method",
-}
-
-
-class SubroutineReturnType(Enum):
-    INT = 0
-    CHAR = 1
-    BOOLEAN = 2
-    VOID = 3
-
-
-_return_type_to_str: dict[str, str] = {
-    "INT": "int",
-    "CHAR": "char",
-    "BOOLEAN": "boolean",
-    "VOID": "void",
-}
+def _add_child(element: Element, tag_name: str, value: str | None) -> Element:
+    dom_tree = element.ownerDocument
+    child = dom_tree.createElement(tag_name)
+    child.appendChild(dom_tree.createTextNode(value))
+    element.appendChild(child)
+    return child
 
 
 @dataclass(frozen=True)
@@ -43,101 +17,64 @@ class ReturnStatement:
 
     def export_to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("returnStatement")
-        element.appendChild(create_simple_element(dom_tree, "keyword", "return"))
+        _add_child(element, "keyword", "return")
         if self.expression is not None:
             pass
-        element.appendChild(create_simple_element(dom_tree, "symbol", ";"))
+        _add_child(element, "symbol", ";")
         return element
 
 
-@dataclass(frozen=True)
-class Statement:
-    statement: ReturnStatement
-
-    def export_to_xml(self, dom_tree: Document) -> Element:
-        return self.statement.export_to_xml(dom_tree)
+Statement: TypeAlias = ReturnStatement
 
 
 @dataclass(frozen=True)
-class Statements:
-    statements_list: list[Statement]
-
-    def export_to_xml(self, dom_tree: Document) -> Element:
-        element = dom_tree.createElement("statements")
-        for statement in self.statements_list:
-            element.appendChild(statement.export_to_xml(dom_tree))
-        return element
-
-
-@dataclass(frozen=True)
-class ParameterList:
-    parameter_list: list[None]
-
-    def export_to_xml(self, dom_tree: Document) -> Element:
-        element = dom_tree.createElement("parameterList")
-        for _ in self.parameter_list:
-            pass
-        return element
-
-
-@dataclass(frozen=True)
-class SubroutineBody:
-    var_dec_list: list[None]
-    statements: Statements
-
-    def export_to_xml(self, dom_tree: Document) -> Element:
-        element = dom_tree.createElement("subroutineBody")
-        element.appendChild(create_simple_element(dom_tree, "symbol", "{"))
-        element.appendChild(self.statements.export_to_xml(dom_tree))
-        element.appendChild(create_simple_element(dom_tree, "symbol", "}"))
-        return element
-
-
-@dataclass(frozen=True)
-class SubroutineDec:
-    subroutine_type: SubroutineType
-    subroutine_return_type: SubroutineReturnType | str
-    subroutine_name: str
-    parameter_list: ParameterList
-    subroutine_body: SubroutineBody
+class Subroutine:
+    type_: str
+    return_type: str
+    name: str
+    parameters: list[None]
+    variables: list[None]
+    statements: list[Statement]
 
     def export_to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("subroutineDec")
-        element.appendChild(
-            create_simple_element(
-                dom_tree, "keyword", _type_to_str[self.subroutine_type.name]
-            )
+        _add_child(element, "keyword", self.type_)
+        element_type = (
+            "keyword"
+            if self.return_type in {"int", "char", "boolean", "void"}
+            else "identifier"
         )
-        if isinstance(self.subroutine_return_type, str):
-            element.appendChild(create_simple_element(dom_tree, "identifier", self.subroutine_return_type))
-        elif isinstance(self.subroutine_return_type, SubroutineReturnType):
-            element.appendChild(
-                create_simple_element(
-                    dom_tree,
-                    "keyword",
-                    _return_type_to_str[self.subroutine_return_type.name],
-                )
-            )
-        element.appendChild(create_simple_element(dom_tree, "identifier", self.subroutine_name))
-        element.appendChild(create_simple_element(dom_tree, "symbol", "("))
-        element.appendChild(self.parameter_list.export_to_xml(dom_tree))
-        element.appendChild(create_simple_element(dom_tree, "symbol", ")"))
-        element.appendChild(self.subroutine_body.export_to_xml(dom_tree))
+        _add_child(element, element_type, self.return_type)
+        _add_child(element, "identifier", self.name)
+        _add_child(element, "symbol", "(")
+        parameters = dom_tree.createElement("parameterList")
+        for _ in self.parameters:
+            pass
+        element.appendChild(parameters)
+        _add_child(element, "symbol", ")")
+        body = dom_tree.createElement("subroutineBody")
+        _add_child(body, "symbol", "{")
+        statements = dom_tree.createElement("statements")
+        for statement in self.statements:
+            statements.appendChild(statement.export_to_xml(dom_tree))
+        body.appendChild(statements)
+        _add_child(body, "symbol", "}")
+        element.appendChild(body)
         return element
 
 
 @dataclass(frozen=True)
 class Class:
-    class_name: str
+    name: str
     # class_var_dec_list: list[ClassVarDec]
-    subroutine_dec_list: list[SubroutineDec]
+    subroutines: list[Subroutine]
 
     def export_to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("class")
-        element.appendChild(create_simple_element(dom_tree, "keyword", "class"))
-        element.appendChild(create_simple_element(dom_tree, "identifier", self.class_name))
-        element.appendChild(create_simple_element(dom_tree, "symbol", "{"))
-        for subroutine_dec in self.subroutine_dec_list:
+        _add_child(element, "keyword", "class")
+        _add_child(element, "identifier", self.name)
+        _add_child(element, "symbol", "{")
+        for subroutine_dec in self.subroutines:
             element.appendChild(subroutine_dec.export_to_xml(dom_tree))
-        element.appendChild(create_simple_element(dom_tree, "symbol", "}"))
+        _add_child(element, "symbol", "}")
         return element
