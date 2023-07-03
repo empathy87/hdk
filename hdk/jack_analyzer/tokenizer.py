@@ -65,28 +65,28 @@ class Token(NamedTuple):
     value: str
 
 
-def parse_line(line: str) -> Iterator[Token]:
+def tokenize(text: str) -> Iterator[Token]:
     current_token = ""
-    for char in line:
+    for char in text:
         if char in _SYMBOLS:
             if current_token != "":
-                yield parse_token(current_token)
-            yield parse_token(char)
+                yield build_token(current_token)
+            yield build_token(char)
             current_token = ""
         elif char == " " and (len(current_token) == 0 or current_token[0] != '"'):
             if current_token != "":
-                yield parse_token(current_token)
+                yield build_token(current_token)
             current_token = ""
         else:
             current_token += char
             if current_token[0] == current_token[-1] == '"' and len(current_token) != 1:
-                yield parse_token(current_token)
+                yield build_token(current_token)
                 current_token = ""
     if current_token != "":
-        yield parse_token(current_token)
+        yield build_token(current_token)
 
 
-def parse_token(token: str) -> Token:
+def build_token(token: str) -> Token:
     if token in _SYMBOLS:
         return Token(TokenType.SYMBOL, token)
     if token in _KEYWORDS:
@@ -98,7 +98,7 @@ def parse_token(token: str) -> Token:
     return Token(TokenType.IDENTIFIER, token)
 
 
-def parse_source_code(lines: Iterable[str]) -> Iterator[Token]:
+def tokenize_source_code(lines: Iterable[str]) -> Iterator[Token]:
     is_comment = False
     for line_num, line in enumerate(lines):
         line = line.strip().split("//")[0]
@@ -110,17 +110,17 @@ def parse_source_code(lines: Iterable[str]) -> Iterator[Token]:
         if len(line) == 0 or is_comment:
             continue
         try:
-            yield from parse_line(line)
+            yield from tokenize(line)
         except ValueError as e:
             raise ValueError(f"Cannot parse line {line_num + 1}.") from e
 
 
-def parse_program(source_path: Path) -> Iterator[Token]:
+def tokenize_program(source_path: Path) -> Iterator[Token]:
     def _file_lines() -> Iterator[str]:
         with open(source_path) as file:
             yield from file
 
-    return parse_source_code(_file_lines())
+    return tokenize_source_code(_file_lines())
 
 
 def to_xml(tokens: Iterable[Token]) -> xml.dom.minidom.Document:
