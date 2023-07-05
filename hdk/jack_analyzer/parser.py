@@ -2,7 +2,7 @@ from typing import Iterable, Iterator
 
 from hdk.jack_analyzer.syntax import Expression, Term, SimpleTermType, SubroutineCall, ExpressionList, LetStatement, \
     DoStatement, ReturnStatement, WhileStatement, IfStatement, Statements, Var, ClassVar, ParameterList, SubroutineBody, \
-    Subroutine, Class
+    Subroutine, Class, SimpleTerm, CallTerm, ExpressionTerm
 from hdk.jack_analyzer.tokenizer import Token, tokenize, TokenType
 
 
@@ -248,6 +248,74 @@ def parse_statements(tokens: TokensIterator) -> Statements:
     return Statements(statements=statements_list)
 
 
+def parse_term(tokens: TokensIterator) -> Term:
+    """
+    >>> expression_text = '(-j);'
+    >>> expression_tokens = tokenize(expression_text)
+    >>> parse_term(TokensIterator(expression_tokens))
+    """
+    token = next(tokens)
+    next_term_token = tokens.peek()
+    match token:
+        case Token(token_type=TokenType.INTEGER_CONSTANT, value=value):
+            return Term(unaryOp=None, term=SimpleTerm(type_=SimpleTermType.INTEGER_CONSTANT,
+                                                      value=value,
+                                                      expression=None))
+        case Token(token_type=TokenType.STRING_CONSTANT, value=value):
+            return Term(unaryOp=None, term=SimpleTerm(type_=SimpleTermType.STRING_CONSTANT,
+                                                      value=value,
+                                                      expression=None))
+        case Token(token_type=TokenType.KEYWORD, value=value):
+            return Term(unaryOp=None, term=SimpleTerm(type_=SimpleTermType.KEYWORD_CONSTANT,
+                                                      value=value,
+                                                      expression=None))
+        case Token(token_type=TokenType.IDENTIFIER, value=value):
+            if next_term_token.value == "[":
+                next(tokens)
+                result = Term(unaryOp=None, term=SimpleTerm(type_=SimpleTermType.VAR_NAME,
+                                                            value=value,
+                                                            expression=parse_expression(tokens)))
+                next(tokens)
+                return result
+            elif next_term_token.value == "(":
+                next(tokens)
+                result = Term(
+                    unaryOp=None,
+                    term=CallTerm(
+                        subroutine_call=SubroutineCall(
+                            name=(None, token.value),
+                            expressions=parse_expression_list(tokens)
+                        )
+                    )
+                )
+                next(tokens)
+                return result
+            elif next_term_token.value == ".":
+                next(tokens)
+                name = token.value
+                method = next(tokens).value
+                next(tokens)
+                result = Term(
+                    unaryOp=None,
+                    term=CallTerm(
+                        subroutine_call=SubroutineCall(
+                            name=(name, method),
+                            expressions=parse_expression_list(tokens)
+                        )
+                    )
+                )
+                next(tokens)
+                return result
+            else:
+                return Term(unaryOp=None, term=SimpleTerm(type_=SimpleTermType.VAR_NAME, value=value, expression=None))
+        case Token(token_type=TokenType.SYMBOL, value="("):
+            result = Term(unaryOp=None, term=ExpressionTerm(expression=parse_expression(tokens)))
+            next(tokens)
+            return result
+        case Token(token_type=TokenType.SYMBOL, value=value):
+            return Term(unaryOp=value, term=parse_term(tokens))
+
+
 def parse_expression(tokens: TokensIterator) -> Expression:
     """
     >>> expression_text = 'SquareGame.new();'
@@ -255,45 +323,7 @@ def parse_expression(tokens: TokensIterator) -> Expression:
     >>> parse_expression(TokensIterator(expression_tokens))
     """
 
-    def _parse_term() -> Term:
-        token = next(tokens)
-        next_token = tokens.peek()
-        match token:
-            case Token(token_type=TokenType.INTEGER_CONSTANT, value=value):
-                return Term(unaryOp=None, type_=SimpleTermType.INTEGER_CONSTANT, value=value, expression=None)
-            case Token(token_type=TokenType.STRING_CONSTANT, value=value):
-                return Term(unaryOp=None, type_=SimpleTermType.STRING_CONSTANT, value=value, expression=None)
-            case Token(token_type=TokenType.KEYWORD, value=value):
-                return Term(unaryOp=None, type_=SimpleTermType.KEYWORD_CONSTANT, value=value, expression=None)
-            case Token(token_type=TokenType.IDENTIFIER, value=value):
-                if next_token.token_type == TokenType.SYMBOL and next_token.value == "[":
-                    next(tokens)
-                    result = Term(unaryOp=None, type_=SimpleTermType.VAR_NAME, value=value, expression=parse_expression(tokens))
-                    next(tokens)
-                    return result
-                elif next_token.token_type == TokenType.SYMBOL and next_token.value == "(":
-                    next(tokens)
-                    result = Term(unaryOp=None, type_=SubroutineCall((None, token.value), expressions=parse_expression_list(tokens)), value=None, expression=None)
-                    next(tokens)
-                    return result
-                elif next_token.token_type == TokenType.SYMBOL and next_token.value == ".":
-                    next(tokens)
-                    name = token.value
-                    method = next(tokens).value
-                    next(tokens)
-                    result = Term(unaryOp=None, type_=SubroutineCall((name, method), expressions=parse_expression_list(tokens)), value=None, expression=None)
-                    next(tokens)
-                    return result
-                else:
-                    return Term(unaryOp=None, type_=SimpleTermType.VAR_NAME, value=value, expression=None)
-            case Token(token_type=TokenType.SYMBOL, value="("):
-                result = Term(unaryOp=None, type_=parse_expression(tokens), value=None, expression=None)
-                next(tokens)
-                return result
-            case Token(token_type=TokenType.SYMBOL, value=value):
-                return Term(unaryOp=value, type_=_parse_term(), value=None, expression=None)
-
-    first_term = _parse_term()
+    first_term = parse_term(tokens)
     term_list = []
     while True:
         next_token = tokens.peek()
@@ -302,4 +332,4 @@ def parse_expression(tokens: TokensIterator) -> Expression:
         next_token = next(tokens)
         if next_token.value not in {"+", "-", "*", "/", "&", "|", "<", ">", "="}:
             return Expression(first_term=first_term, term_list=term_list)
-        term_list.append((next_token.value, _parse_term()))
+        term_list.append((next_token.value, parse_term(tokens)))

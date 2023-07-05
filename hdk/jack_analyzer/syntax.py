@@ -39,37 +39,61 @@ class SimpleTermType(Enum):
 
 
 @dataclass(frozen=True)
-class Term:
-    unaryOp: str | None
-    type_: SimpleTermType | Expression | SubroutineCall | Term
-    value: str | None
+class SimpleTerm:
+    type_: SimpleTermType
+    value: str
     expression: Expression | None
 
     def export_to_xml(self, dom_tree: Document) -> Element:
-        element = dom_tree.createElement("term")
         type_to_str: dict[SimpleTermType, str] = {
             SimpleTermType.KEYWORD_CONSTANT: "keyword",
             SimpleTermType.VAR_NAME: "identifier",
             SimpleTermType.INTEGER_CONSTANT: "integerConstant",
             SimpleTermType.STRING_CONSTANT: "stringConstant"
         }
-        if self.unaryOp is not None:
-            _add_child(element, "symbol", self.unaryOp)
-            element.appendChild(self.type_.export_to_xml(dom_tree))
-            return element
-        if isinstance(self.type_, SimpleTermType):
-            _add_child(element, type_to_str[self.type_], self.value)
-            if self.expression is not None:
-                _add_child(element, "symbol", "[")
-                element.appendChild(self.expression.export_to_xml(dom_tree))
-                _add_child(element, "symbol", "]")
-        elif isinstance(self.type_, Expression):
-            _add_child(element, "symbol", "(")
-            element.appendChild(self.type_.export_to_xml(dom_tree))
-            _add_child(element, "symbol", ")")
-        else:
-            element = self.type_.export_to_xml(dom_tree, element)
+        element = dom_tree.createElement("term")
+        _add_child(element, type_to_str[self.type_], self.value)
+        if self.expression is not None:
+            _add_child(element, "symbol", "[")
+            element.appendChild(self.expression.export_to_xml(dom_tree))
+            _add_child(element, "symbol", "]")
         return element
+
+
+@dataclass(frozen=True)
+class CallTerm:
+    subroutine_call: SubroutineCall
+
+    def export_to_xml(self, dom_tree: Document) -> Element:
+        element = dom_tree.createElement("term")
+        element = self.subroutine_call.export_to_xml(dom_tree, element)
+        return element
+
+
+@dataclass(frozen=True)
+class ExpressionTerm:
+    expression: Expression
+
+    def export_to_xml(self, dom_tree: Document) -> Element:
+        element = dom_tree.createElement("term")
+        _add_child(element, "symbol", "(")
+        element.appendChild(self.expression.export_to_xml(dom_tree))
+        _add_child(element, "symbol", ")")
+        return element
+
+
+@dataclass(frozen=True)
+class Term:
+    unaryOp: str | None
+    term: SimpleTerm | ExpressionTerm | CallTerm | Term
+
+    def export_to_xml(self, dom_tree: Document) -> Element:
+        if self.unaryOp is not None:
+            element = dom_tree.createElement("term")
+            _add_child(element, "symbol", self.unaryOp)
+            element.appendChild(self.term.export_to_xml(dom_tree))
+            return element
+        return self.term.export_to_xml(dom_tree)
 
 
 @dataclass(frozen=True)

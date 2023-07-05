@@ -5,27 +5,9 @@ from xml.dom.minidom import Document, Element
 
 from _pytest.fixtures import fixture
 
-from hdk.jack_analyzer.parser import parse_expression, TokensIterator, parse_let_statement, parse_do_statement, \
-    parse_return_statement, parse_statements, parse_class
-from hdk.jack_analyzer.syntax import (
-    Class,
-    ClassVar,
-    Subroutine,
-    ParameterList,
-    SubroutineBody,
-    Var,
-    Statements,
-    LetStatement,
-    IfStatement,
-    DoStatement,
-    ReturnStatement,
-    Expression,
-    Term,
-    SubroutineCall,
-    ExpressionList,
-    SimpleTermType
-)
-from hdk.jack_analyzer.tokenizer import tokenize_program, to_xml, tokenize
+from hdk.jack_analyzer.parser import TokensIterator, parse_class
+
+from hdk.jack_analyzer.tokenizer import tokenize_program, to_xml
 
 
 @fixture
