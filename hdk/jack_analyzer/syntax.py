@@ -7,7 +7,7 @@ from xml.dom.minidom import Document, Element
 from enum import Enum
 
 
-def _add_child(element: Element, tag_name: str, value: str | None) -> Element:
+def _add_child(element: Element, tag_name: str, value: str) -> Element:
     dom_tree = element.ownerDocument
     child = dom_tree.createElement(tag_name)
     child.appendChild(dom_tree.createTextNode(value))
@@ -40,7 +40,7 @@ class ParameterList(UserList[Parameter]):
         return element
 
 
-class ConstantTermType(Enum):
+class ConstantType(Enum):
     KEYWORD = 0
     INTEGER = 1
     STRING = 2
@@ -48,14 +48,14 @@ class ConstantTermType(Enum):
 
 @dataclass(frozen=True)
 class ConstantTerm:
-    type_: ConstantTermType
+    type_: ConstantType
     value: str
 
     def to_xml(self, dom_tree: Document) -> Element:
-        type_to_str: dict[ConstantTermType, str] = {
-            ConstantTermType.KEYWORD: "keyword",
-            ConstantTermType.INTEGER: "integerConstant",
-            ConstantTermType.STRING: "stringConstant"
+        type_to_str: dict[ConstantType, str] = {
+            ConstantType.KEYWORD: "keyword",
+            ConstantType.INTEGER: "integerConstant",
+            ConstantType.STRING: "stringConstant"
         }
         element = dom_tree.createElement("term")
         _add_child(element, type_to_str[self.type_], self.value)
