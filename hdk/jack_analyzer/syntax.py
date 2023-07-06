@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from collections import UserList
 from dataclasses import dataclass
 from typing import TypeAlias
 from xml.dom.minidom import Document, Element
@@ -14,59 +16,70 @@ def _add_child(element: Element, tag_name: str, value: str | None) -> Element:
 
 
 @dataclass(frozen=True)
-class ParameterList:
-    parameters: list[tuple[str, str]]
+class Parameter:
+    type_: str
+    var_name: str
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+
+class ParameterList(UserList[Parameter]):
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("parameterList")
-        for i, (_type, var_name) in enumerate(self.parameters):
+        for i, parameter in enumerate(self):
             element_type = (
-                "keyword" if _type in {"int", "char", "boolean"}
+                "keyword" if parameter.type_ in {"int", "char", "boolean"}
                 else "identifier"
             )
-            _add_child(element, element_type, _type)
-            _add_child(element, "identifier", var_name)
-            if i < len(self.parameters) - 1:
+            _add_child(element, element_type, parameter.type_)
+            _add_child(element, "identifier", parameter.var_name)
+            if i < len(self) - 1:
                 _add_child(element, "symbol", ",")
         return element
 
 
-class SimpleTermType(Enum):
-    KEYWORD_CONSTANT = 0
-    INTEGER_CONSTANT = 1
-    STRING_CONSTANT = 2
-    VAR_NAME = 3
+class ConstantTermType(Enum):
+    KEYWORD = 0
+    INTEGER = 1
+    STRING = 2
 
 
 @dataclass(frozen=True)
-class SimpleTerm:
-    type_: SimpleTermType
+class ConstantTerm:
+    type_: ConstantTermType
     value: str
-    expression: Expression | None
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
-        type_to_str: dict[SimpleTermType, str] = {
-            SimpleTermType.KEYWORD_CONSTANT: "keyword",
-            SimpleTermType.VAR_NAME: "identifier",
-            SimpleTermType.INTEGER_CONSTANT: "integerConstant",
-            SimpleTermType.STRING_CONSTANT: "stringConstant"
+    def to_xml(self, dom_tree: Document) -> Element:
+        type_to_str: dict[ConstantTermType, str] = {
+            ConstantTermType.KEYWORD: "keyword",
+            ConstantTermType.INTEGER: "integerConstant",
+            ConstantTermType.STRING: "stringConstant"
         }
         element = dom_tree.createElement("term")
         _add_child(element, type_to_str[self.type_], self.value)
+        return element
+
+
+@dataclass(frozen=True)
+class VarTerm:
+    var_name: str
+    expression: Expression | None
+
+    def to_xml(self, dom_tree: Document) -> Element:
+        element = dom_tree.createElement("term")
+        _add_child(element, "identifier", self.var_name)
         if self.expression is not None:
             _add_child(element, "symbol", "[")
-            element.appendChild(self.expression.export_to_xml(dom_tree))
+            element.appendChild(self.expression.to_xml(dom_tree))
             _add_child(element, "symbol", "]")
         return element
 
 
 @dataclass(frozen=True)
-class CallTerm:
-    subroutine_call: SubroutineCall
+class SubroutineCallTerm:
+    call: SubroutineCall
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("term")
-        element = self.subroutine_call.export_to_xml(dom_tree, element)
+        element = self.call.to_xml(dom_tree, element)
         return element
 
 
@@ -74,26 +87,29 @@ class CallTerm:
 class ExpressionTerm:
     expression: Expression
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("term")
         _add_child(element, "symbol", "(")
-        element.appendChild(self.expression.export_to_xml(dom_tree))
+        element.appendChild(self.expression.to_xml(dom_tree))
         _add_child(element, "symbol", ")")
         return element
 
 
 @dataclass(frozen=True)
-class Term:
-    unaryOp: str | None
-    term: SimpleTerm | ExpressionTerm | CallTerm | Term
+class UnaryOpTerm:
+    unaryOp: str
+    term: ConstantTerm | VarTerm | ExpressionTerm | SubroutineCallTerm
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         if self.unaryOp is not None:
             element = dom_tree.createElement("term")
             _add_child(element, "symbol", self.unaryOp)
-            element.appendChild(self.term.export_to_xml(dom_tree))
+            element.appendChild(self.term.to_xml(dom_tree))
             return element
-        return self.term.export_to_xml(dom_tree)
+        return self.term.to_xml(dom_tree)
+
+
+Term: TypeAlias = VarTerm | ConstantTerm | UnaryOpTerm | SubroutineCallTerm | ExpressionTerm
 
 
 @dataclass(frozen=True)
@@ -101,40 +117,38 @@ class Expression:
     first_term: Term
     term_list: list[tuple[str, Term]]
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("expression")
-        element.appendChild(self.first_term.export_to_xml(dom_tree))
+        element.appendChild(self.first_term.to_xml(dom_tree))
         for op, term in self.term_list:
             _add_child(element, "symbol", op)
-            element.appendChild(term.export_to_xml(dom_tree))
+            element.appendChild(term.to_xml(dom_tree))
         return element
 
 
-@dataclass(frozen=True)
-class ExpressionList:
-    expression_list: list[Expression]
-
-    def export_to_xml(self, dom_tree: Document) -> Element:
+class Expressions(UserList[Expression]):
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("expressionList")
-        for i, expr in enumerate(self.expression_list):
-            element.appendChild(expr.export_to_xml(dom_tree))
-            if i < len(self.expression_list) - 1:
+        for i, expr in enumerate(self):
+            element.appendChild(expr.to_xml(dom_tree))
+            if i < len(self) - 1:
                 _add_child(element, "symbol", ",")
         return element
 
 
 @dataclass(frozen=True)
 class SubroutineCall:
-    name: tuple[str | None, str]
-    expressions: ExpressionList
+    owner: str | None
+    name: str
+    expressions: Expressions
 
-    def export_to_xml(self, dom_tree: Document, element: Element) -> Element:
-        if self.name[0] is not None:
-            _add_child(element, "identifier", self.name[0])
+    def to_xml(self, dom_tree: Document, element: Element) -> Element:
+        if self.owner is not None:
+            _add_child(element, "identifier", self.owner)
             _add_child(element, "symbol", ".")
-        _add_child(element, "identifier", self.name[1])
+        _add_child(element, "identifier", self.name)
         _add_child(element, "symbol", "(")
-        element.appendChild(self.expressions.export_to_xml(dom_tree))
+        element.appendChild(self.expressions.to_xml(dom_tree))
         _add_child(element, "symbol", ")")
         return element
 
@@ -143,11 +157,11 @@ class SubroutineCall:
 class ReturnStatement:
     expression: Expression | None
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("returnStatement")
         _add_child(element, "keyword", "return")
         if self.expression is not None:
-            element.appendChild(self.expression.export_to_xml(dom_tree))
+            element.appendChild(self.expression.to_xml(dom_tree))
         _add_child(element, "symbol", ";")
         return element
 
@@ -156,10 +170,10 @@ class ReturnStatement:
 class DoStatement:
     subroutine_call: SubroutineCall
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("doStatement")
         _add_child(element, "keyword", "do")
-        element = self.subroutine_call.export_to_xml(dom_tree, element)
+        element = self.subroutine_call.to_xml(dom_tree, element)
         _add_child(element, "symbol", ";")
         return element
 
@@ -167,19 +181,19 @@ class DoStatement:
 @dataclass(frozen=True)
 class LetStatement:
     var_name: str
-    var_expression: Expression | None
+    indexer: Expression | None
     expression: Expression
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("letStatement")
         _add_child(element, "keyword", "let")
         _add_child(element, "identifier", self.var_name)
-        if self.var_expression is not None:
+        if self.indexer is not None:
             _add_child(element, "symbol", "[")
-            element.appendChild(self.var_expression.export_to_xml(dom_tree))
+            element.appendChild(self.indexer.to_xml(dom_tree))
             _add_child(element, "symbol", "]")
         _add_child(element, "symbol", "=")
-        element.appendChild(self.expression.export_to_xml(dom_tree))
+        element.appendChild(self.expression.to_xml(dom_tree))
         _add_child(element, "symbol", ";")
         return element
 
@@ -187,22 +201,22 @@ class LetStatement:
 @dataclass(frozen=True)
 class IfStatement:
     expression: Expression
-    statements_if: Statements
-    statements_else: Statements | None
+    if_statements: Statements
+    else_statements: Statements | None
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("ifStatement")
         _add_child(element, "keyword", "if")
         _add_child(element, "symbol", "(")
-        element.appendChild(self.expression.export_to_xml(dom_tree))
+        element.appendChild(self.expression.to_xml(dom_tree))
         _add_child(element, "symbol", ")")
         _add_child(element, "symbol", "{")
-        element.appendChild(self.statements_if.export_to_xml(dom_tree))
+        element.appendChild(self.if_statements.to_xml(dom_tree))
         _add_child(element, "symbol", "}")
-        if self.statements_else is not None:
+        if self.else_statements is not None:
             _add_child(element, "keyword", "else")
             _add_child(element, "symbol", "{")
-            element.appendChild(self.statements_else.export_to_xml(dom_tree))
+            element.appendChild(self.else_statements.to_xml(dom_tree))
             _add_child(element, "symbol", "}")
         return element
 
@@ -212,14 +226,14 @@ class WhileStatement:
     expression: Expression
     statements: Statements
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("whileStatement")
         _add_child(element, "keyword", "while")
         _add_child(element, "symbol", "(")
-        element.appendChild(self.expression.export_to_xml(dom_tree))
+        element.appendChild(self.expression.to_xml(dom_tree))
         _add_child(element, "symbol", ")")
         _add_child(element, "symbol", "{")
-        element.appendChild(self.statements.export_to_xml(dom_tree))
+        element.appendChild(self.statements.to_xml(dom_tree))
         _add_child(element, "symbol", "}")
         return element
 
@@ -231,19 +245,19 @@ Statement: TypeAlias = ReturnStatement | DoStatement | LetStatement | IfStatemen
 class Statements:
     statements: list[Statement]
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("statements")
         for statement in self.statements:
-            element.appendChild(statement.export_to_xml(dom_tree))
+            element.appendChild(statement.to_xml(dom_tree))
         return element
 
 
 @dataclass(frozen=True)
-class Var:
+class VarDeclaration:
     type_: str
-    vars_names: list[str]
+    names: list[str]
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("varDec")
         _add_child(element, "keyword", "var")
         element_type = (
@@ -252,9 +266,9 @@ class Var:
             else "identifier"
         )
         _add_child(element, element_type, self.type_)
-        for i, var_name in enumerate(self.vars_names):
+        for i, var_name in enumerate(self.names):
             _add_child(element, "identifier", var_name)
-            if i < len(self.vars_names) - 1:
+            if i < len(self.names) - 1:
                 _add_child(element, "symbol", ",")
         _add_child(element, "symbol", ";")
         return element
@@ -262,27 +276,27 @@ class Var:
 
 @dataclass(frozen=True)
 class SubroutineBody:
-    var_dec_list: list[Var]
+    var_declarations: list[VarDeclaration]
     statements: Statements
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("subroutineBody")
         _add_child(element, "symbol", "{")
-        for var_dec in self.var_dec_list:
-            element.appendChild(var_dec.export_to_xml(dom_tree))
-        element.appendChild(self.statements.export_to_xml(dom_tree))
+        for var_dec in self.var_declarations:
+            element.appendChild(var_dec.to_xml(dom_tree))
+        element.appendChild(self.statements.to_xml(dom_tree))
         _add_child(element, "symbol", "}")
         return element
 
 
 @dataclass(frozen=True)
-class Subroutine:
+class SubroutineDeclaration:
     type_: [str, str]
     name: str
     parameters: ParameterList
     body: SubroutineBody
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("subroutineDec")
         _add_child(element, "keyword", self.type_[0])
         element_type = (
@@ -293,29 +307,30 @@ class Subroutine:
         _add_child(element, element_type, self.type_[1])
         _add_child(element, "identifier", self.name)
         _add_child(element, "symbol", "(")
-        element.appendChild(self.parameters.export_to_xml(dom_tree))
+        element.appendChild(self.parameters.to_xml(dom_tree))
         _add_child(element, "symbol", ")")
-        element.appendChild(self.body.export_to_xml(dom_tree))
+        element.appendChild(self.body.to_xml(dom_tree))
         return element
 
 
 @dataclass(frozen=True)
-class ClassVar:
-    type_: tuple[str, str]
-    vars_names: list[str]
+class ClassVarDeclaration:
+    modifier: str
+    type_: str
+    names: list[str]
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("classVarDec")
-        _add_child(element, "keyword", self.type_[0])
+        _add_child(element, "keyword", self.modifier)
         element_type = (
             "keyword"
-            if self.type_[1] in {"int", "char", "boolean"}
+            if self.type_ in {"int", "char", "boolean"}
             else "identifier"
         )
-        _add_child(element, element_type, self.type_[1])
-        for i, var_name in enumerate(self.vars_names):
+        _add_child(element, element_type, self.type_)
+        for i, var_name in enumerate(self.names):
             _add_child(element, "identifier", var_name)
-            if i < len(self.vars_names) - 1:
+            if i < len(self.names) - 1:
                 _add_child(element, "symbol", ",")
         _add_child(element, "symbol", ";")
         return element
@@ -324,17 +339,17 @@ class ClassVar:
 @dataclass(frozen=True)
 class Class:
     name: str
-    class_vars: list[ClassVar]
-    subroutines: list[Subroutine]
+    class_vars: list[ClassVarDeclaration]
+    subroutines: list[SubroutineDeclaration]
 
-    def export_to_xml(self, dom_tree: Document) -> Element:
+    def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("class")
         _add_child(element, "keyword", "class")
         _add_child(element, "identifier", self.name)
         _add_child(element, "symbol", "{")
         for class_var_dec in self.class_vars:
-            element.appendChild(class_var_dec.export_to_xml(dom_tree))
+            element.appendChild(class_var_dec.to_xml(dom_tree))
         for subroutine_dec in self.subroutines:
-            element.appendChild(subroutine_dec.export_to_xml(dom_tree))
+            element.appendChild(subroutine_dec.to_xml(dom_tree))
         _add_child(element, "symbol", "}")
         return element

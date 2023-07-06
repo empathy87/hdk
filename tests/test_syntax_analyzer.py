@@ -80,7 +80,7 @@ def test_parser_program(tmpdir_with_programs):
         program_tokens = TokensIterator(tokenize_program(Path(full_path)))
         A = parse_class(program_tokens)
         d_tree = Document()
-        a = A.export_to_xml(d_tree)
+        a = A.to_xml(d_tree)
         d_tree.appendChild(a)
         compare_to_file_path = full_path.parents[0] / (full_path.stem + ".xml")
         file_to_compare = open(compare_to_file_path, "r")
