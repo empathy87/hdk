@@ -40,8 +40,7 @@ def parse_var(tokens: TokensIterator) -> VarDeclaration:
     next(tokens)
     return VarDeclaration(
         type_=type_,
-        names=var_names_list,
-        is_identifier=bool(type_ not in {"int", "char", "boolean"})
+        names=var_names_list
     )
 
 
@@ -60,8 +59,7 @@ def parse_class_var(tokens: TokensIterator) -> ClassVarDeclaration:
     return ClassVarDeclaration(
         modifier=modifier,
         type_=type_,
-        names=var_names_list,
-        is_identifier=bool(type_ not in {"int", "char", "boolean"})
+        names=var_names_list
     )
 
 
@@ -80,8 +78,7 @@ def parse_parameter_list(tokens: TokensIterator) -> ParameterList:
         type_, var_name = next(tokens).value, next(tokens).value
         parameter_list.append(Parameter(
             type_=type_,
-            var_name=var_name,
-            is_identifier=(type_ not in {"int", "char", "boolean"})))
+            var_name=var_name))
     next(tokens)
     return parameter_list
 
@@ -122,8 +119,7 @@ def parse_subroutine(tokens: TokensIterator) -> SubroutineDeclaration:
         return_type=return_type,
         name=name,
         parameters=parameters,
-        body=subroutine_body,
-        is_identifier=bool(return_type not in {"int", "char", "boolean", "void"})
+        body=subroutine_body
     )
 
 

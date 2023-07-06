@@ -19,7 +19,10 @@ def _add_child(element: Element, tag_name: str, value: str | None) -> Element:
 class Parameter:
     type_: str
     var_name: str
-    is_identifier: bool
+
+    @property
+    def is_identifier(self) -> bool:
+        return self.type_ not in {"int", "char", "boolean"}
 
     def to_xml(self, element: Element):
         _add_child(element, "identifier" if self.is_identifier else "keyword", self.type_)
@@ -252,7 +255,10 @@ class Statements(UserList[Statement]):
 class VarDeclaration:
     type_: str
     names: list[str]
-    is_identifier: bool
+
+    @property
+    def is_identifier(self) -> bool:
+        return self.type_ not in {"int", "char", "boolean"}
 
     def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("varDec")
@@ -288,7 +294,10 @@ class SubroutineDeclaration:
     name: str
     parameters: ParameterList
     body: SubroutineBody
-    is_identifier: bool
+
+    @property
+    def is_identifier(self) -> bool:
+        return self.return_type not in {"int", "char", "boolean", "void"}
 
     def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("subroutineDec")
@@ -307,7 +316,10 @@ class ClassVarDeclaration:
     modifier: str
     type_: str
     names: list[str]
-    is_identifier: bool
+
+    @property
+    def is_identifier(self) -> bool:
+        return self.type_ not in {"int", "char", "boolean"}
 
     def to_xml(self, dom_tree: Document) -> Element:
         element = dom_tree.createElement("classVarDec")
