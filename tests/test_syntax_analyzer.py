@@ -22,6 +22,15 @@ def tmpdir_with_programs(tmpdir, request) -> Path:
 
 
 def compare_node_values(element1: Element, element2: Element) -> bool:
+    """Compares the node values of two XML elements.
+
+    Args:
+        element1 (Element): The first XML element.
+        element2 (Element): The second XML element.
+
+    Returns:
+        bool: True if the node values are equal, False otherwise.
+    """
     if element1.nodeName != element2.nodeName:
         return False
     if element1.nodeValue is None or element2.nodeValue is None:
@@ -32,6 +41,15 @@ def compare_node_values(element1: Element, element2: Element) -> bool:
 
 
 def compare_elements(element1: Element, element2: Element) -> bool:
+    """Recursively compares two XML elements.
+
+    Args:
+        element1 (Element): The first XML element.
+        element2 (Element): The second XML element.
+
+    Returns:
+        bool: True if the elements are equal, False otherwise.
+    """
     if len(element1.childNodes) != len(element2.childNodes) or not compare_node_values(
             element1, element2
     ):
@@ -45,6 +63,14 @@ def compare_elements(element1: Element, element2: Element) -> bool:
 
 
 def test_tokenizer_programs(tmpdir_with_programs):
+    """Test function to compare the output of tokenizer on a set of programs.
+
+    Args:
+        tmpdir_with_programs (path): Temporary directory containing the test programs.
+
+    Raises:
+        AssertionError: If a mismatch is found between the tokenizer output and the expected XML output.
+    """
     programs = [
         "ArrayTest\\Main.jack",
         "ExpressionLessSquare\\Main.jack",
@@ -66,6 +92,14 @@ def test_tokenizer_programs(tmpdir_with_programs):
 
 
 def test_parser_program(tmpdir_with_programs):
+    """Test function to compare the output of the parser on a set of programs.
+
+    Args:
+        tmpdir_with_programs (path): Temporary directory containing the test programs.
+
+    Raises:
+        AssertionError: If a mismatch is found between the parser output and the expected XML output.
+    """
     programs = [
         "ArrayTest\\Main.jack",
         "ExpressionLessSquare\\Main.jack",
@@ -93,6 +127,14 @@ def test_parser_program(tmpdir_with_programs):
 
 
 def _clean_formatting(element: Element):
+    """Cleans the formatting of an XML element.
+
+    This function removes any empty text nodes and leading/trailing whitespace from the text nodes
+    within the given element.
+
+    Args:
+        element (Element): The XML element to clean the formatting for.
+    """
     children = list(element.childNodes)
     has_child_element = any(isinstance(e, Element) for e in children)
     if has_child_element:

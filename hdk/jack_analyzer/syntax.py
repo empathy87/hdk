@@ -1,13 +1,24 @@
+"""Defines dataclasses that represent different types of Hack assembly instructions."""
 from __future__ import annotations
 
 from collections import UserList
 from dataclasses import dataclass
-from typing import TypeAlias
-from xml.dom.minidom import Document, Element
 from enum import Enum
+from typing import TypeAlias, Tuple, List, Union, Optional
+from xml.dom.minidom import Document, Element
 
 
 def _add_child(element: Element, tag_name: str, value: str) -> Element:
+    """Adds a child element with the specified tag name and value to the given XML element.
+
+    Args:
+        element (Element): The XML element to add the child element to.
+        tag_name (str): The tag name of the child element.
+        value (str): The text value of the child element.
+
+    Returns:
+        Element: The newly added child element.
+    """
     dom_tree = element.ownerDocument
     child = dom_tree.createElement(tag_name)
     child.appendChild(dom_tree.createTextNode(value))
@@ -17,21 +28,45 @@ def _add_child(element: Element, tag_name: str, value: str) -> Element:
 
 @dataclass(frozen=True)
 class Parameter:
+    """Represents a parameter with a type and variable name.
+
+    Attributes:
+        type_ (str): The type of the parameter.
+        var_name (str): The variable name of the parameter.
+    """
     type_: str
     var_name: str
 
     @property
     def is_identifier(self) -> bool:
+        """Returns True if the parameter type is not one of the reserved keywords; False otherwise."""
         return self.type_ not in {"int", "char", "boolean"}
 
     def to_xml(self, element: Element):
+        """Converts the parameter instance to an XML representation and adds it as a child element to the given element.
+
+        Args:
+            element (Element): The parent XML element to add the parameter's XML representation to.
+
+        Returns:
+            Element: The parent XML element with the added parameter XML representation.
+        """
         _add_child(element, "identifier" if self.is_identifier else "keyword", self.type_)
         _add_child(element, "identifier", self.var_name)
         return element
 
 
 class ParameterList(UserList[Parameter]):
+    """Represents a list of parameters."""
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the parameter list to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the parameter list.
+        """
         element = dom_tree.createElement("parameterList")
         for i, parameter in enumerate(self):
             element = parameter.to_xml(element)
@@ -41,6 +76,7 @@ class ParameterList(UserList[Parameter]):
 
 
 class ConstantType(Enum):
+    """Represents a constant types."""
     KEYWORD = 0
     INTEGER = 1
     STRING = 2
@@ -48,10 +84,24 @@ class ConstantType(Enum):
 
 @dataclass(frozen=True)
 class ConstantTerm:
+    """Represents a constant term with a type and value.
+
+    Attributes:
+        type_ (ConstantType): The type of the term.
+        value (str): The value of the term.
+    """
     type_: ConstantType
     value: str
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the constant term to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the constant term.
+        """
         type_to_str: dict[ConstantType, str] = {
             ConstantType.KEYWORD: "keyword",
             ConstantType.INTEGER: "integerConstant",
@@ -64,10 +114,24 @@ class ConstantTerm:
 
 @dataclass(frozen=True)
 class VarTerm:
+    """Represents a variable term with a variable name and an optional index expression.
+
+    Attributes:
+        var_name (str): The name of the variable.
+        index (Expression | None): An optional index expression.
+    """
     var_name: str
     index: Expression | None
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the variable term to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the variable term.
+        """
         element = dom_tree.createElement("term")
         _add_child(element, "identifier", self.var_name)
         if self.index is not None:
@@ -79,9 +143,22 @@ class VarTerm:
 
 @dataclass(frozen=True)
 class SubroutineCallTerm:
+    """Represents a subroutine call term with a subroutine call.
+
+    Attributes:
+        call (SubroutineCall): The subroutine call.
+    """
     call: SubroutineCall
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the subroutine call term to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the subroutine call term.
+        """
         element = dom_tree.createElement("term")
         element = self.call.to_xml(dom_tree, element)
         return element
@@ -89,9 +166,22 @@ class SubroutineCallTerm:
 
 @dataclass(frozen=True)
 class ExpressionTerm:
+    """Represents an expression term with an expression.
+
+    Attributes:
+        expression (Expression): The expression.
+    """
     expression: Expression
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the expression term to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the expression term.
+        """
         element = dom_tree.createElement("term")
         _add_child(element, "symbol", "(")
         element.appendChild(self.expression.to_xml(dom_tree))
@@ -101,10 +191,24 @@ class ExpressionTerm:
 
 @dataclass(frozen=True)
 class UnaryOpTerm:
+    """Represents a unary operation term with a unary operator and a term.
+
+    Attributes:
+        unaryOp (str): The unary operator.
+        term (Union[ConstantTerm, VarTerm, ExpressionTerm, SubroutineCallTerm]): The term.
+    """
     unaryOp: str
     term: ConstantTerm | VarTerm | ExpressionTerm | SubroutineCallTerm
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the unary operation term to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the unary operation term.
+        """
         element = dom_tree.createElement("term")
         _add_child(element, "symbol", self.unaryOp)
         element.appendChild(self.term.to_xml(dom_tree))
@@ -116,10 +220,24 @@ Term: TypeAlias = VarTerm | ConstantTerm | UnaryOpTerm | SubroutineCallTerm | Ex
 
 @dataclass(frozen=True)
 class Expression:
+    """Represents an expression with a first term and a list of additional terms.
+
+    Attributes:
+        first_term (Term): The first term of the expression.
+        term_list (List[Tuple[str, Term]]): A list of tuples containing operators and terms.
+    """
     first_term: Term
-    term_list: list[tuple[str, Term]]
+    term_list: List[Tuple[str, Term]]
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the expression to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the expression.
+        """
         element = dom_tree.createElement("expression")
         element.appendChild(self.first_term.to_xml(dom_tree))
         for op, term in self.term_list:
@@ -129,7 +247,17 @@ class Expression:
 
 
 class Expressions(UserList[Expression]):
+    """Represents a list of expressions."""
+
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the expressions to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the expression list.
+        """
         element = dom_tree.createElement("expressionList")
         for i, expr in enumerate(self):
             element.appendChild(expr.to_xml(dom_tree))
@@ -140,11 +268,27 @@ class Expressions(UserList[Expression]):
 
 @dataclass(frozen=True)
 class SubroutineCall:
-    owner: str | None
+    """Represents a subroutine call with an optional owner, a name, and a list of arguments.
+
+    Attributes:
+        owner (str|None): The owner of the subroutine, or None if there is no owner.
+        name (str): The name of the subroutine.
+        arguments (Expressions): The list of arguments passed to the subroutine.
+    """
+    owner: Union[str, None]
     name: str
     arguments: Expressions
 
     def to_xml(self, dom_tree: Document, element: Element) -> Element:
+        """Converts the subroutine call to an XML representation and appends it to the given XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+            element (Element): The XML element to append the subroutine call to.
+
+        Returns:
+            Element: The updated XML element.
+        """
         if self.owner is not None:
             _add_child(element, "identifier", self.owner)
             _add_child(element, "symbol", ".")
@@ -157,9 +301,22 @@ class SubroutineCall:
 
 @dataclass(frozen=True)
 class ReturnStatement:
-    expression: Expression | None
+    """Represents a return statement with an optional expression.
+
+    Attributes:
+        expression (Expression|None): The expression to return, or None if there is no expression.
+    """
+    expression: Union[Expression, None]
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the return statement to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the return statement.
+        """
         element = dom_tree.createElement("returnStatement")
         _add_child(element, "keyword", "return")
         if self.expression is not None:
@@ -170,9 +327,22 @@ class ReturnStatement:
 
 @dataclass(frozen=True)
 class DoStatement:
+    """Represents a do statement with a subroutine call.
+
+    Attributes:
+        call (SubroutineCall): The subroutine call.
+    """
     call: SubroutineCall
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the do statement to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the do statement.
+        """
         element = dom_tree.createElement("doStatement")
         _add_child(element, "keyword", "do")
         element = self.call.to_xml(dom_tree, element)
@@ -182,11 +352,27 @@ class DoStatement:
 
 @dataclass(frozen=True)
 class LetStatement:
+    """Represents a let statement with a variable name, an optional index, and an expression.
+
+    Attributes:
+        var_name (str): The name of the variable.
+        index (Expression|None): The index expression, or None if there is no index.
+        expression (Expression): The expression to assign to the variable.
+    """
+
     var_name: str
-    index: Expression | None
+    index: Union[Expression, None]
     expression: Expression
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the let statement to an XML representation and returns it as an XML element.
+
+        Args:
+            dom_tree (Document): The XML document to create the XML element.
+
+        Returns:
+            Element: The XML element representing the let statement.
+        """
         element = dom_tree.createElement("letStatement")
         _add_child(element, "keyword", "let")
         _add_child(element, "identifier", self.var_name)
@@ -202,11 +388,26 @@ class LetStatement:
 
 @dataclass(frozen=True)
 class IfStatement:
+    """Represents an if statement in the programming language.
+
+    Attributes:
+        condition (Expression): The condition of the if statement.
+        if_ (Statements): The statements to execute if the condition is true.
+        else_ (Statements): The statements to execute if the condition is false, or None if there is no else clause.
+    """
     condition: Expression
     if_: Statements
-    else_: Statements | None
+    else_: Optional[Statements]
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the if statement to an XML element.
+
+        Args:
+            dom_tree: The XML DOM tree object.
+
+        Returns:
+            The XML element representing the if statement.
+        """
         element = dom_tree.createElement("ifStatement")
         _add_child(element, "keyword", "if")
         _add_child(element, "symbol", "(")
@@ -225,10 +426,24 @@ class IfStatement:
 
 @dataclass(frozen=True)
 class WhileStatement:
+    """Represents a while statement in the programming language.
+
+    Attributes:
+        condition (Expression): The condition of the while statement.
+        body (Statements): The statements to execute while the condition is true.
+    """
     condition: Expression
     body: Statements
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the while statement to an XML element.
+
+        Args:
+            dom_tree (Document): The XML DOM tree object.
+
+        Returns:
+            Element: The XML element representing the while statement.
+        """
         element = dom_tree.createElement("whileStatement")
         _add_child(element, "keyword", "while")
         _add_child(element, "symbol", "(")
@@ -244,7 +459,20 @@ Statement: TypeAlias = ReturnStatement | DoStatement | LetStatement | IfStatemen
 
 
 class Statements(UserList[Statement]):
+    """Represents a list of statements.
+
+    Attributes:
+        data (List[Statement]): The list of statements.
+    """
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the statements to an XML element.
+
+        Args:
+            dom_tree (Document): The XML DOM tree object.
+
+        Returns:
+            Element: The XML element representing the statements.
+        """
         element = dom_tree.createElement("statements")
         for statement in self:
             element.appendChild(statement.to_xml(dom_tree))
@@ -253,14 +481,33 @@ class Statements(UserList[Statement]):
 
 @dataclass(frozen=True)
 class VarDeclaration:
+    """Represents a variable declaration in the programming language.
+
+    Attributes:
+        type_ (str): The type of the variable.
+        names (List[str]): The names of the variables.
+    """
     type_: str
-    names: list[str]
+    names: List[str]
 
     @property
     def is_identifier(self) -> bool:
+        """Checks if the variable declaration is an identifier type or not.
+
+        Returns:
+            bool: True if the type is an identifier, False otherwise.
+        """
         return self.type_ not in {"int", "char", "boolean"}
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the variable declaration to an XML element.
+
+        Args:
+            dom_tree (Document): The XML DOM tree object.
+
+        Returns:
+            Element: The XML element representing the variable declaration.
+        """
         element = dom_tree.createElement("varDec")
         _add_child(element, "keyword", "var")
         _add_child(element, "identifier" if self.is_identifier else "keyword", self.type_)
@@ -274,10 +521,24 @@ class VarDeclaration:
 
 @dataclass(frozen=True)
 class SubroutineBody:
-    var_declarations: list[VarDeclaration]
+    """Represents the body of a subroutine.
+
+    Attributes:
+        var_declarations (List[VarDeclaration]): The list of variable declarations.
+        statements (Statements): The statements inside the subroutine.
+    """
+    var_declarations: List[VarDeclaration]
     statements: Statements
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the subroutine body to an XML element.
+
+        Args:
+            dom_tree (Document): The XML DOM tree object.
+
+        Returns:
+            Element: The XML element representing the subroutine body.
+        """
         element = dom_tree.createElement("subroutineBody")
         _add_child(element, "symbol", "{")
         for var_dec in self.var_declarations:
@@ -289,6 +550,15 @@ class SubroutineBody:
 
 @dataclass(frozen=True)
 class SubroutineDeclaration:
+    """Represents a subroutine declaration in the programming language.
+
+    Attributes:
+        type_ (str): The type of the subroutine.
+        return_type (str): The return type of the subroutine.
+        name (str): The name of the subroutine.
+        parameters (ParameterList): The parameters of the subroutine.
+        body (SubroutineBody): The body of the subroutine.
+    """
     type_: str
     return_type: str
     name: str
@@ -297,9 +567,22 @@ class SubroutineDeclaration:
 
     @property
     def is_identifier(self) -> bool:
+        """Checks if the return type of the subroutine is an identifier type or not.
+
+        Returns:
+            bool: True if the return type is an identifier, False otherwise.
+        """
         return self.return_type not in {"int", "char", "boolean", "void"}
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the subroutine declaration to an XML element.
+
+        Args:
+            dom_tree (Document): The XML DOM tree object.
+
+        Returns:
+            Element: The XML element representing the subroutine declaration.
+        """
         element = dom_tree.createElement("subroutineDec")
         _add_child(element, "keyword", self.type_)
         _add_child(element, "identifier" if self.is_identifier else "keyword", self.return_type)
@@ -313,15 +596,35 @@ class SubroutineDeclaration:
 
 @dataclass(frozen=True)
 class ClassVarDeclaration:
+    """Represents a class variable declaration in the programming language.
+
+    Attributes:
+        modifier (str): The modifier of the variable declaration.
+        type_ (str): The type of the variable.
+        names (List[str]): The names of the variables.
+    """
     modifier: str
     type_: str
-    names: list[str]
+    names: List[str]
 
     @property
     def is_identifier(self) -> bool:
+        """Checks if the variable declaration is an identifier type or not.
+
+        Returns:
+            bool: True if the type is an identifier, False otherwise.
+        """
         return self.type_ not in {"int", "char", "boolean"}
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the class variable declaration to an XML element.
+
+        Args:
+            dom_tree (Document): The XML DOM tree object.
+
+        Returns:
+            Element: The XML element representing the class variable declaration.
+        """
         element = dom_tree.createElement("classVarDec")
         _add_child(element, "keyword", self.modifier)
         _add_child(element, "identifier" if self.is_identifier else "keyword", self.type_)
@@ -335,11 +638,26 @@ class ClassVarDeclaration:
 
 @dataclass(frozen=True)
 class Class:
+    """Represents a class in the programming language.
+
+    Attributes:
+        name (str): The name of the class.
+        class_vars (List[ClassVarDeclaration]): The class variable declarations.
+        subroutines (List[SubroutineDeclaration]): The subroutine declarations.
+    """
     name: str
-    class_vars: list[ClassVarDeclaration]
-    subroutines: list[SubroutineDeclaration]
+    class_vars: List[ClassVarDeclaration]
+    subroutines: List[SubroutineDeclaration]
 
     def to_xml(self, dom_tree: Document) -> Element:
+        """Converts the class to an XML element.
+
+        Args:
+            dom_tree (Document): The XML DOM tree object.
+
+        Returns:
+            Element: The XML element representing the class.
+        """
         element = dom_tree.createElement("class")
         _add_child(element, "keyword", "class")
         _add_child(element, "identifier", self.name)
