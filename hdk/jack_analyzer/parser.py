@@ -1,17 +1,35 @@
 """Functions for parsing tokens into Jack structures."""
-from typing import Iterable, Iterator
+from collections.abc import Iterable, Iterator
 
-from hdk.jack_analyzer.syntax import Expression, UnaryOpTerm, ConstantType, SubroutineCall, Expressions, \
-    LetStatement, \
-    DoStatement, ReturnStatement, WhileStatement, IfStatement, Statements, VarDeclaration, ClassVarDeclaration, ParameterList, SubroutineBody, \
-    SubroutineDeclaration, Class, ConstantTerm, SubroutineCallTerm, ExpressionTerm, Parameter, VarTerm, Term
+from hdk.jack_analyzer.syntax import (
+    Class,
+    ClassVarDeclaration,
+    ConstantTerm,
+    ConstantType,
+    DoStatement,
+    Expression,
+    Expressions,
+    ExpressionTerm,
+    IfStatement,
+    LetStatement,
+    Parameter,
+    ParameterList,
+    ReturnStatement,
+    Statements,
+    SubroutineBody,
+    SubroutineCallTerm,
+    SubroutineDeclaration,
+    Term,
+    UnaryOpTerm,
+    VarDeclaration,
+    VarTerm,
+    WhileStatement,
+)
 from hdk.jack_analyzer.tokenizer import Token, TokenType
 
 
 class TokensIterator(Iterator[Token]):
     """Iterator for tokens.
-
-    This iterator provides methods for peeking at the next token and iterating through tokens.
 
     Args:
         tokens: The iterable collection of tokens.
@@ -20,6 +38,7 @@ class TokensIterator(Iterator[Token]):
         _tokens_iterator: The iterator for the tokens.
         _look_ahead: The next token that is being looked ahead.
     """
+
     def __init__(self, tokens: Iterable[Token]):
         """Initializes the TokensIterator.
 
@@ -140,7 +159,7 @@ def parse_subroutine(tokens: TokensIterator) -> SubroutineDeclaration:
         return_type=return_type,
         name=name,
         parameters=parameters,
-        body=parse_subroutine_body(tokens)
+        body=parse_subroutine_body(tokens),
     )
 
 
@@ -195,7 +214,11 @@ def parse_let_statement(tokens: TokensIterator) -> LetStatement:
     if token.value == "[":
         var_expression = parse_expression(tokens)
         next(tokens), next(tokens)
-    return LetStatement(var_name=var_name.value, index=var_expression, expression=parse_expression(tokens))
+    return LetStatement(
+        var_name=var_name.value,
+        index=var_expression,
+        expression=parse_expression(tokens),
+    )
 
 
 def parse_do_statement(tokens: TokensIterator) -> DoStatement:
@@ -213,7 +236,7 @@ def parse_do_statement(tokens: TokensIterator) -> DoStatement:
         next(tokens)
     expressions = parse_expressions(tokens)
     next(tokens), next(tokens)
-    return DoStatement(call=SubroutineCall(owner=owner, name=name, arguments=expressions))
+    return DoStatement(owner=owner, name=name, arguments=expressions)
 
 
 def parse_return_statement(tokens: TokensIterator) -> ReturnStatement:
@@ -315,32 +338,34 @@ def parse_term(tokens: TokensIterator) -> Term:
         case Token(token_type=TokenType.IDENTIFIER, value=value):
             if next_term_token.value == "[":
                 next(tokens)
-                result = VarTerm(var_name=value, index=parse_expression(tokens))
+                var_term = VarTerm(var_name=value, index=parse_expression(tokens))
                 next(tokens)
-                return result
+                return var_term
             elif next_term_token.value == "(":
                 next(tokens)
-                result = SubroutineCallTerm(
-                    call=SubroutineCall(owner=None, name=value, arguments=parse_expressions(tokens))
+                call_term = SubroutineCallTerm(
+                    owner=None, name=value, arguments=parse_expressions(tokens)
                 )
                 next(tokens)
-                return result
+                return call_term
             elif next_term_token.value == ".":
                 next(tokens)
                 owner, name = token.value, next(tokens).value
                 next(tokens)
-                result = SubroutineCallTerm(
-                    call=SubroutineCall(owner=owner, name=name, arguments=parse_expressions(tokens))
+                call_term = SubroutineCallTerm(
+                    owner=owner, name=name, arguments=parse_expressions(tokens)
                 )
                 next(tokens)
-                return result
+                return call_term
             return VarTerm(var_name=value, index=None)
         case Token(token_type=TokenType.SYMBOL, value="("):
-            result = ExpressionTerm(expression=parse_expression(tokens))
+            expression_term = ExpressionTerm(expression=parse_expression(tokens))
             next(tokens)
-            return result
+            return expression_term
         case Token(token_type=TokenType.SYMBOL, value=value):
             return UnaryOpTerm(unaryOp=value, term=parse_term(tokens))
+        case token:
+            raise ValueError(f"Incorrect token {token!r}.")
 
 
 def parse_expression(tokens: TokensIterator) -> Expression:
@@ -353,7 +378,7 @@ def parse_expression(tokens: TokensIterator) -> Expression:
         Expression: The parsed expression.
     """
     first_term = parse_term(tokens)
-    term_list = []
+    term_list: list[tuple[str, Term]] = []
     while True:
         next_token = tokens.peek()
         if next_token.token_type == TokenType.SYMBOL and next_token.value in {"]", ")"}:
