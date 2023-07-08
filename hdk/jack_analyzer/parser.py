@@ -33,8 +33,6 @@ class TokensIterator(Iterator[Token]):
     def peek(self) -> Token:
         """Peeks at the next token.
 
-        If the next token is not already looked ahead, it fetches the next token from the iterator.
-
         Returns:
             Token: The next token.
         """
@@ -44,9 +42,6 @@ class TokensIterator(Iterator[Token]):
 
     def __next__(self) -> Token:
         """Returns the next token in the iteration.
-
-        If the next token has been looked ahead, it returns the looked ahead token.
-        Otherwise, it fetches the next token from the iterator.
 
         Returns:
             Token: The next token.
