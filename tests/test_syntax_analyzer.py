@@ -1,3 +1,4 @@
+"""Provides automated testing for the syntax analyzer."""
 import shutil
 import xml.dom.minidom
 from pathlib import Path
@@ -21,43 +22,34 @@ def tmpdir_with_programs(tmpdir, request) -> Path:
     return path
 
 
-def compare_node_values(element1: Element, element2: Element) -> bool:
-    """Compares the node values of two XML elements.
-
-    Args:
-        element1 (Element): The first XML element.
-        element2 (Element): The second XML element.
-
-    Returns:
-        bool: True if the node values are equal, False otherwise.
-    """
-    if element1.nodeName != element2.nodeName:
-        return False
-    if element1.nodeValue is None or element2.nodeValue is None:
-        return element1.nodeValue == element2.nodeValue
-    node_value1 = element1.nodeValue.replace(" ", "").replace("\t", "")
-    node_value2 = element2.nodeValue.replace(" ", "").replace("\t", "")
-    return node_value1 == node_value2
-
-
 def compare_elements(element1: Element, element2: Element) -> bool:
     """Recursively compares two XML elements.
 
     Args:
-        element1 (Element): The first XML element.
-        element2 (Element): The second XML element.
+        element1: The first XML element.
+        element2: The second XML element.
 
     Returns:
         bool: True if the elements are equal, False otherwise.
     """
-    if len(element1.childNodes) != len(element2.childNodes) or not compare_node_values(
-            element1, element2
-    ):
+    def compare_node_values() -> bool:
+        """Compares the node values of two XML elements.
+
+        Returns:
+            bool: True if the node values are equal, False otherwise.
+        """
+        if element1.nodeName != element2.nodeName:
+            return False
+        if element1.nodeValue is None or element2.nodeValue is None:
+            return element1.nodeValue == element2.nodeValue
+        node_value1 = element1.nodeValue.replace(" ", "").replace("\t", "")
+        node_value2 = element2.nodeValue.replace(" ", "").replace("\t", "")
+        return node_value1 == node_value2
+
+    if len(element1.childNodes) != len(element2.childNodes) or not compare_node_values():
         return False
-    if len(element1.childNodes) == 0:
-        return True
     for i in range(len(element1.childNodes)):
-        if compare_elements(element1.childNodes[i], element2.childNodes[i]) is False:
+        if not compare_elements(element1.childNodes[i], element2.childNodes[i]):
             return False
     return True
 
@@ -66,7 +58,7 @@ def test_tokenizer_programs(tmpdir_with_programs):
     """Test function to compare the output of tokenizer on a set of programs.
 
     Args:
-        tmpdir_with_programs (path): Temporary directory containing the test programs.
+        tmpdir_with_programs: Temporary directory containing the test programs.
 
     Raises:
         AssertionError: If a mismatch is found between the tokenizer output and the expected XML output.
@@ -83,9 +75,9 @@ def test_tokenizer_programs(tmpdir_with_programs):
     for path in programs:
         full_path = tmpdir_with_programs / path
         my_dom_tree = to_xml(tokenize_program(full_path))
-        compare_to_file_path = full_path.parents[0] / (full_path.stem + "T.xml")
-        f = "".join(open(compare_to_file_path).read().split("\n"))
-        compare_to_dom_tree = xml.dom.minidom.parseString(f)
+        file_to_compare = open(full_path.parents[0] / (full_path.stem + "T.xml"), "r")
+        compare_to_dom_tree = xml.dom.minidom.parse(file_to_compare)
+        _clean_formatting(compare_to_dom_tree)
         assert compare_elements(
             my_dom_tree.childNodes[0], compare_to_dom_tree.childNodes[0]
         ), "Error."
@@ -112,15 +104,12 @@ def test_parser_program(tmpdir_with_programs):
     for path in programs:
         full_path = tmpdir_with_programs / path
         program_tokens = TokensIterator(tokenize_program(Path(full_path)))
-        A = parse_class(program_tokens)
         d_tree = Document()
-        a = A.to_xml(d_tree)
-        d_tree.appendChild(a)
+        d_tree.appendChild(parse_class(program_tokens).to_xml(d_tree))
         compare_to_file_path = full_path.parents[0] / (full_path.stem + ".xml")
         file_to_compare = open(compare_to_file_path, "r")
         compare_to_tree = xml.dom.minidom.parse(file_to_compare)
         _clean_formatting(compare_to_tree)
-
         assert compare_elements(
             d_tree.childNodes[0], compare_to_tree.childNodes[0]
         ), "Error."

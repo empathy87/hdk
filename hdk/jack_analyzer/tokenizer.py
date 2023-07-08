@@ -1,3 +1,4 @@
+"""Functions for parsing Jack code into tokens."""
 import xml.dom.minidom
 from collections.abc import Iterable, Iterator
 from enum import Enum
@@ -6,6 +7,7 @@ from typing import NamedTuple
 
 
 class TokenType(Enum):
+    """Represents a token types."""
     KEYWORD = 0
     SYMBOL = 1
     INTEGER_CONSTANT = 2
@@ -61,11 +63,20 @@ _SYMBOLS: set[str] = {
 
 
 class Token(NamedTuple):
+    """Represents a token with its type and value."""
     token_type: TokenType
     value: str
 
 
 def tokenize(text: str) -> Iterator[Token]:
+    """Tokenizes the given text into a sequence of tokens.
+
+    Args:
+        text: The input text to be tokenized.
+
+    Yields:
+        Iterator[Token]: A generator that yields tokens.
+    """
     current_token = ""
     for char in text:
         if char in _SYMBOLS:
@@ -87,6 +98,14 @@ def tokenize(text: str) -> Iterator[Token]:
 
 
 def build_token(token: str) -> Token:
+    """Builds a token based on the given string.
+
+    Args:
+        token: The string to be converted into a token.
+
+    Returns:
+        Token: The token object representing the given string.
+    """
     if token in _SYMBOLS:
         return Token(TokenType.SYMBOL, token)
     if token in _KEYWORDS:
@@ -99,6 +118,17 @@ def build_token(token: str) -> Token:
 
 
 def tokenize_source_code(lines: Iterable[str]) -> Iterator[Token]:
+    """Tokenizes the source code provided as a sequence of lines.
+
+    Args:
+        lines: An iterable of strings representing the lines of source code.
+
+    Yields:
+        Iterator[Token]: A generator that yields tokens.
+
+    Raises:
+        ValueError: If there is an error parsing a line of source code.
+    """
     is_comment = False
     for line_num, line in enumerate(lines):
         line = line.strip().split("//")[0]
@@ -116,6 +146,14 @@ def tokenize_source_code(lines: Iterable[str]) -> Iterator[Token]:
 
 
 def tokenize_program(source_path: Path) -> Iterator[Token]:
+    """Tokenizes the program source code from the given file.
+
+    Args:
+        source_path: The path to the source code file.
+
+    Yields:
+        Iterator[Token]: A generator that yields tokens.
+    """
     def _file_lines() -> Iterator[str]:
         with open(source_path) as file:
             yield from file
@@ -124,6 +162,14 @@ def tokenize_program(source_path: Path) -> Iterator[Token]:
 
 
 def to_xml(tokens: Iterable[Token]) -> xml.dom.minidom.Document:
+    """Converts a sequence of tokens into an XML representation.
+
+    Args:
+        tokens: An iterable of Token objects.
+
+    Returns:
+        Document: The XML document representing the tokens.
+    """
     type_to_tag: dict[TokenType, str] = {
         TokenType.KEYWORD: "keyword",
         TokenType.SYMBOL: "symbol",
