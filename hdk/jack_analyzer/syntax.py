@@ -415,10 +415,13 @@ class SubroutineBody(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("subroutineBody")
-        _add_child(element, "symbol", "{")
-        for var_dec in self.var_declarations:
-            element.appendChild(var_dec.to_xml(doc))
-        _add_children(element, self.statements.to_xml(doc), "}")
+        _add_children(
+            element,
+            "{",
+            *(x.to_xml(doc) for x in self.var_declarations),
+            self.statements.to_xml(doc),
+            "}",
+        )
         return element
 
 
