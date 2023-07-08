@@ -26,7 +26,9 @@ def _add_child(parent: Element, child_tag: str, child_value: str):
 def _add_children(parent: Element, *children: Any):
     for child in children:
         match child:
-            case (tag, value):
+            case str() as value:
+                _add_child(parent, child_tag="symbol", child_value=value)
+            case (str() as tag, str() as value):
                 _add_child(parent, child_tag=tag, child_value=value)
             case Element() as child:
                 parent.appendChild(child)
@@ -71,12 +73,10 @@ class ParameterList(UserList[Parameter], AbstractSyntaxTree):
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("parameterList")
         for i, parameter in enumerate(self):
-            _add_child(
-                element,
-                "identifier" if parameter.is_identifier else "keyword",
-                parameter.type_,
+            tag = "identifier" if parameter.is_identifier else "keyword"
+            _add_children(
+                element, (tag, parameter.type_), ("identifier", parameter.var_name)
             )
-            _add_child(element, "identifier", parameter.var_name)
             if i < len(self) - 1:
                 _add_child(element, "symbol", ",")
         return element
@@ -129,9 +129,7 @@ class VarTerm(AbstractSyntaxTree):
         element = doc.createElement("term")
         _add_child(element, "identifier", self.var_name)
         if self.index is not None:
-            _add_child(element, "symbol", "[")
-            element.appendChild(self.index.to_xml(doc))
-            _add_child(element, "symbol", "]")
+            _add_children(element, "[", self.index.to_xml(doc), "]")
         return element
 
 
@@ -151,10 +149,14 @@ class SubroutineCall(AbstractSyntaxTree):
 
     def _write_content(self, element: Element):
         if self.owner is not None:
-            _add_children(element, ("identifier", self.owner), ("symbol", "."))
-        _add_children(element, ("identifier", self.name), ("symbol", "("))
-        element.appendChild(self.arguments.to_xml(element.ownerDocument))
-        _add_child(element, "symbol", ")")
+            _add_children(element, ("identifier", self.owner), ".")
+        _add_children(
+            element,
+            ("identifier", self.name),
+            "(",
+            self.arguments.to_xml(element.ownerDocument),
+            ")",
+        )
 
     @abc.abstractmethod
     def to_xml(self, doc: Document) -> Element:
@@ -183,9 +185,7 @@ class ExpressionTerm(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("term")
-        _add_child(element, "symbol", "(")
-        element.appendChild(self.expression.to_xml(doc))
-        _add_child(element, "symbol", ")")
+        _add_children(element, "(", self.expression.to_xml(doc), ")")
         return element
 
 
@@ -203,8 +203,7 @@ class UnaryOpTerm(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("term")
-        _add_child(element, "symbol", self.unaryOp)
-        element.appendChild(self.term.to_xml(doc))
+        _add_children(element, self.unaryOp, self.term.to_xml(doc))
         return element
 
 
@@ -224,8 +223,7 @@ class Expression(AbstractSyntaxTree):
         element = doc.createElement("expression")
         element.appendChild(self.first_term.to_xml(doc))
         for op, term in self.term_list:
-            _add_child(element, "symbol", op)
-            element.appendChild(term.to_xml(doc))
+            _add_children(element, ("symbol", op), term.to_xml(doc))
         return element
 
 
@@ -290,12 +288,8 @@ class LetStatement(AbstractSyntaxTree):
         element = doc.createElement("letStatement")
         _add_children(element, ("keyword", "let"), ("identifier", self.var_name))
         if self.index is not None:
-            _add_child(element, "symbol", "[")
-            element.appendChild(self.index.to_xml(doc))
-            _add_child(element, "symbol", "]")
-        _add_child(element, "symbol", "=")
-        element.appendChild(self.expression.to_xml(doc))
-        _add_child(element, "symbol", ";")
+            _add_children(element, "[", self.index.to_xml(doc), "]")
+        _add_children(element, "=", self.expression.to_xml(doc), ";")
         return element
 
 
@@ -315,15 +309,20 @@ class IfStatement(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("ifStatement")
-        _add_children(element, ("keyword", "if"), ("symbol", "("))
-        element.appendChild(self.condition.to_xml(doc))
-        _add_children(element, ("symbol", ")"), ("symbol", "{"))
-        element.appendChild(self.if_.to_xml(doc))
-        _add_child(element, "symbol", "}")
+        _add_children(
+            element,
+            ("keyword", "if"),
+            "(",
+            self.condition.to_xml(doc),
+            ")",
+            "{",
+            self.if_.to_xml(doc),
+            "}",
+        )
         if self.else_ is not None:
-            _add_children(element, ("keyword", "else"), ("symbol", "{"))
-            element.appendChild(self.else_.to_xml(doc))
-            _add_child(element, "symbol", "}")
+            _add_children(
+                element, ("keyword", "else"), "{", self.else_.to_xml(doc), "}"
+            )
         return element
 
 
@@ -341,11 +340,16 @@ class WhileStatement(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("whileStatement")
-        _add_children(element, ("keyword", "while"), ("symbol", "("))
-        element.appendChild(self.condition.to_xml(doc))
-        _add_children(element, ("symbol", ")"), ("symbol", "{"))
-        element.appendChild(self.body.to_xml(doc))
-        _add_child(element, "symbol", "}")
+        _add_children(
+            element,
+            ("keyword", "while"),
+            "(",
+            self.condition.to_xml(doc),
+            ")",
+            "{",
+            self.body.to_xml(doc),
+            "}",
+        )
         return element
 
 
@@ -414,8 +418,7 @@ class SubroutineBody(AbstractSyntaxTree):
         _add_child(element, "symbol", "{")
         for var_dec in self.var_declarations:
             element.appendChild(var_dec.to_xml(doc))
-        element.appendChild(self.statements.to_xml(doc))
-        _add_child(element, "symbol", "}")
+        _add_children(element, self.statements.to_xml(doc), "}")
         return element
 
 
@@ -445,11 +448,16 @@ class SubroutineDeclaration(AbstractSyntaxTree):
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("subroutineDec")
         tag = "identifier" if self.is_identifier else "keyword"
-        _add_children(element, ("keyword", self.type_), (tag, self.return_type))
-        _add_children(element, ("identifier", self.name), ("symbol", "("))
-        element.appendChild(self.parameters.to_xml(doc))
-        _add_child(element, "symbol", ")")
-        element.appendChild(self.body.to_xml(doc))
+        _add_children(
+            element,
+            ("keyword", self.type_),
+            (tag, self.return_type),
+            ("identifier", self.name),
+            "(",
+            self.parameters.to_xml(doc),
+            ")",
+            self.body.to_xml(doc),
+        )
         return element
 
 
@@ -501,13 +509,14 @@ class Class(AbstractSyntaxTree):
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("class")
         _add_children(
-            element, ("keyword", "class"), ("identifier", self.name), ("symbol", "{")
+            element,
+            ("keyword", "class"),
+            ("identifier", self.name),
+            "{",
+            *(x.to_xml(doc) for x in self.class_vars),
+            *(x.to_xml(doc) for x in self.subroutines),
+            "}",
         )
-        for class_var_dec in self.class_vars:
-            element.appendChild(class_var_dec.to_xml(doc))
-        for subroutine_dec in self.subroutines:
-            element.appendChild(subroutine_dec.to_xml(doc))
-        _add_child(element, "symbol", "}")
         return element
 
 
