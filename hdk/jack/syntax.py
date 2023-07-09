@@ -9,40 +9,51 @@ from typing import Any, ClassVar, NamedTuple, TypeAlias
 from xml.dom.minidom import Document, Element
 
 
-def _add_child(parent: Element, child_tag: str, child_value: str):
+def _add_child(parent: Element, value: str, tag: str = "symbol"):
     """Builds and adds a child to the XML element.
 
     Args:
         parent: The XML element to add the child element to.
-        child_tag: The tag of the child element.
-        child_value: The text value of the child element.
+        value: The text value of the child element.
+        tag: The tag of the child element.
     """
     doc = parent.ownerDocument
-    child = doc.createElement(child_tag)
-    child.appendChild(doc.createTextNode(child_value))
+    child = doc.createElement(tag)
+    child.appendChild(doc.createTextNode(value))
     parent.appendChild(child)
 
 
 def _add_children(parent: Element, *children: Any):
+    """Appends children to the parent XML Element.
+
+    Args:
+        parent: The parent XML element to append children to.
+        *children: Any number of children that could be None, a syntax element,
+            a string, a tuple of strings or a list.
+    """
     for child in children:
+        if child is None:
+            continue
         match child:
+            case AbstractSyntaxTree():
+                parent.appendChild(child.to_xml(parent.ownerDocument))
             case str() as value:
-                _add_child(parent, child_tag="symbol", child_value=value)
+                _add_child(parent, value=value)
             case (str() as tag, str() as value):
-                _add_child(parent, child_tag=tag, child_value=value)
-            case Element() as child:
-                parent.appendChild(child)
+                _add_child(parent, value=value, tag=tag)
+            case list():
+                _add_children(parent, *tuple(child))
 
 
 class AbstractSyntaxTree(abc.ABC):
-    """Represents the abstract syntax tree."""
+    """Represents the abstract syntax tree (a syntax structure of Jack language)."""
 
     @abc.abstractmethod
     def to_xml(self, doc: Document) -> Element:
         """Builds an XML element that represents the syntax structure.
 
         Args:
-            doc: The owner XML document.
+            doc: The XML document.
 
         Returns:
             The constructed XML element within the document.
@@ -51,11 +62,11 @@ class AbstractSyntaxTree(abc.ABC):
 
 
 class Parameter(NamedTuple):
-    """Represents a parameter with a type and variable name.
+    """Represents a parameter of subroutine declaration.
 
     Attributes:
-        type_: The type of the parameter.
-        var_name: The variable name of the parameter.
+        type_: The type of the parameter (int, char, boolean or a class name).
+        var_name: The variable name defined by the parameter.
     """
 
     type_: str
@@ -63,22 +74,22 @@ class Parameter(NamedTuple):
 
     @property
     def is_identifier(self) -> bool:
-        """True if the parameter type is not one of the reserved keywords."""
+        """True if the parameter type is not one of the built-in data types."""
         return self.type_ not in {"int", "char", "boolean"}
 
 
 class ParameterList(UserList[Parameter], AbstractSyntaxTree):
-    """Represents a list of parameters."""
+    """Represents a parameters list of a subroutine declaration."""
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("parameterList")
-        for i, parameter in enumerate(self):
-            tag = "identifier" if parameter.is_identifier else "keyword"
+        for i, param in enumerate(self):
             _add_children(
-                element, (tag, parameter.type_), ("identifier", parameter.var_name)
+                element,
+                ("identifier" if param.is_identifier else "keyword", param.type_),
+                ("identifier", param.var_name),
+                "," if i < len(self) - 1 else None,
             )
-            if i < len(self) - 1:
-                _add_child(element, "symbol", ",")
         return element
 
 
@@ -109,7 +120,7 @@ class ConstantTerm(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("term")
-        _add_child(element, ConstantTerm._type_to_str[self.type_], self.value)
+        _add_child(element, self.value, ConstantTerm._type_to_str[self.type_])
         return element
 
 
@@ -127,9 +138,9 @@ class VarTerm(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("term")
-        _add_child(element, "identifier", self.var_name)
+        _add_child(element, self.var_name, "identifier")
         if self.index is not None:
-            _add_children(element, "[", self.index.to_xml(doc), "]")
+            _add_children(element, "[", self.index, "]")
         return element
 
 
@@ -154,7 +165,7 @@ class SubroutineCall(AbstractSyntaxTree):
             element,
             ("identifier", self.name),
             "(",
-            self.arguments.to_xml(element.ownerDocument),
+            self.arguments,
             ")",
         )
 
@@ -164,7 +175,7 @@ class SubroutineCall(AbstractSyntaxTree):
 
 
 @dataclass(frozen=True)
-class SubroutineCallTerm(SubroutineCall):
+class CallTerm(SubroutineCall):
     """Represents a subroutine call term."""
 
     def to_xml(self, doc: Document) -> Element:
@@ -185,7 +196,7 @@ class ExpressionTerm(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("term")
-        _add_children(element, "(", self.expression.to_xml(doc), ")")
+        _add_children(element, "(", self.expression, ")")
         return element
 
 
@@ -203,7 +214,7 @@ class UnaryOpTerm(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("term")
-        _add_children(element, self.unaryOp, self.term.to_xml(doc))
+        _add_children(element, self.unaryOp, self.term)
         return element
 
 
@@ -212,7 +223,7 @@ class Expression(AbstractSyntaxTree):
     """Represents an expression.
 
     Attributes:
-        first_term: The first term of the expression.
+        first_term: The first (mandatory) term of the expression.
         term_list: A list of tuples containing operators and terms.
     """
 
@@ -221,9 +232,9 @@ class Expression(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("expression")
-        element.appendChild(self.first_term.to_xml(doc))
+        _add_children(element, self.first_term)
         for op, term in self.term_list:
-            _add_children(element, ("symbol", op), term.to_xml(doc))
+            _add_children(element, ("symbol", op), term)
         return element
 
 
@@ -233,9 +244,7 @@ class Expressions(UserList[Expression], AbstractSyntaxTree):
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("expressionList")
         for i, expr in enumerate(self):
-            element.appendChild(expr.to_xml(doc))
-            if i < len(self) - 1:
-                _add_child(element, "symbol", ",")
+            _add_children(element, expr, "," if i < len(self) - 1 else None)
         return element
 
 
@@ -251,10 +260,7 @@ class ReturnStatement(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("returnStatement")
-        _add_child(element, "keyword", "return")
-        if self.expression is not None:
-            element.appendChild(self.expression.to_xml(doc))
-        _add_child(element, "symbol", ";")
+        _add_children(element, ("keyword", "return"), self.expression, ";")
         return element
 
 
@@ -264,9 +270,9 @@ class DoStatement(SubroutineCall):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("doStatement")
-        _add_child(element, "keyword", "do")
+        _add_child(element, "do", "keyword")
         self._write_content(element)
-        _add_child(element, "symbol", ";")
+        _add_child(element, ";")
         return element
 
 
@@ -275,7 +281,7 @@ class LetStatement(AbstractSyntaxTree):
     """Represents a let statement.
 
     Attributes:
-        var_name: The name of the variable.
+        var_name: The name of the variable (l-value of the let statement).
         index: The index expression, or None if there is no index.
         expression: The expression to assign to the variable.
     """
@@ -288,8 +294,8 @@ class LetStatement(AbstractSyntaxTree):
         element = doc.createElement("letStatement")
         _add_children(element, ("keyword", "let"), ("identifier", self.var_name))
         if self.index is not None:
-            _add_children(element, "[", self.index.to_xml(doc), "]")
-        _add_children(element, "=", self.expression.to_xml(doc), ";")
+            _add_children(element, "[", self.index, "]")
+        _add_children(element, "=", self.expression, ";")
         return element
 
 
@@ -298,12 +304,12 @@ class IfStatement(AbstractSyntaxTree):
     """Represents an if statement.
 
     Attributes:
-        condition: The condition of the if statement.
+        test: The condition of the if statement.
         if_: The statements to execute if the condition is true.
         else_: The statements to execute if the condition is false.
     """
 
-    condition: Expression
+    test: Expression
     if_: Statements
     else_: Statements | None
 
@@ -313,16 +319,14 @@ class IfStatement(AbstractSyntaxTree):
             element,
             ("keyword", "if"),
             "(",
-            self.condition.to_xml(doc),
+            self.test,
             ")",
             "{",
-            self.if_.to_xml(doc),
+            self.if_,
             "}",
         )
         if self.else_ is not None:
-            _add_children(
-                element, ("keyword", "else"), "{", self.else_.to_xml(doc), "}"
-            )
+            _add_children(element, ("keyword", "else"), "{", self.else_, "}")
         return element
 
 
@@ -331,11 +335,11 @@ class WhileStatement(AbstractSyntaxTree):
     """Represents a while statement.
 
     Attributes:
-        condition: The condition of the while statement.
+        test: The condition of the while statement.
         body: The statements to execute while the condition is true.
     """
 
-    condition: Expression
+    test: Expression
     body: Statements
 
     def to_xml(self, doc: Document) -> Element:
@@ -344,10 +348,10 @@ class WhileStatement(AbstractSyntaxTree):
             element,
             ("keyword", "while"),
             "(",
-            self.condition.to_xml(doc),
+            self.test,
             ")",
             "{",
-            self.body.to_xml(doc),
+            self.body,
             "}",
         )
         return element
@@ -359,16 +363,11 @@ Statement: TypeAlias = (
 
 
 class Statements(UserList[Statement], AbstractSyntaxTree):
-    """Represents a list of statements.
-
-    Attributes:
-        data: The list of statements.
-    """
+    """Represents a list of statements."""
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("statements")
-        for statement in self:
-            element.appendChild(statement.to_xml(doc))
+        _add_children(element, self.data)
         return element
 
 
@@ -393,11 +392,11 @@ class VarDeclaration(AbstractSyntaxTree):
         element = doc.createElement("varDec")
         tag = "identifier" if self.is_identifier else "keyword"
         _add_children(element, ("keyword", "var"), (tag, self.type_))
-        for i, var_name in enumerate(self.names):
-            _add_child(element, "identifier", var_name)
+        for i, name in enumerate(self.names):
+            _add_children(element, ("identifier", name))
             if i < len(self.names) - 1:
-                _add_child(element, "symbol", ",")
-        _add_child(element, "symbol", ";")
+                _add_child(element, ",")
+        _add_child(element, ";")
         return element
 
 
@@ -415,13 +414,7 @@ class SubroutineBody(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("subroutineBody")
-        _add_children(
-            element,
-            "{",
-            *(x.to_xml(doc) for x in self.var_declarations),
-            self.statements.to_xml(doc),
-            "}",
-        )
+        _add_children(element, "{", self.var_declarations, self.statements, "}")
         return element
 
 
@@ -450,16 +443,15 @@ class SubroutineDeclaration(AbstractSyntaxTree):
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("subroutineDec")
-        tag = "identifier" if self.is_identifier else "keyword"
         _add_children(
             element,
             ("keyword", self.type_),
-            (tag, self.return_type),
+            ("identifier" if self.is_identifier else "keyword", self.return_type),
             ("identifier", self.name),
             "(",
-            self.parameters.to_xml(doc),
+            self.parameters,
             ")",
-            self.body.to_xml(doc),
+            self.body,
         )
         return element
 
@@ -487,11 +479,11 @@ class ClassVarDeclaration(AbstractSyntaxTree):
         element = doc.createElement("classVarDec")
         tag = "identifier" if self.is_identifier else "keyword"
         _add_children(element, ("keyword", self.modifier), (tag, self.type_))
-        for i, var_name in enumerate(self.names):
-            _add_child(element, "identifier", var_name)
+        for i, name in enumerate(self.names):
+            _add_child(element, name, "identifier")
             if i < len(self.names) - 1:
-                _add_child(element, "symbol", ",")
-        _add_child(element, "symbol", ";")
+                _add_child(element, ",")
+        _add_child(element, ";")
         return element
 
 
@@ -516,13 +508,11 @@ class Class(AbstractSyntaxTree):
             ("keyword", "class"),
             ("identifier", self.name),
             "{",
-            *(x.to_xml(doc) for x in self.class_vars),
-            *(x.to_xml(doc) for x in self.subroutines),
+            self.class_vars,
+            self.subroutines,
             "}",
         )
         return element
 
 
-Term: TypeAlias = (
-    VarTerm | ConstantTerm | UnaryOpTerm | SubroutineCallTerm | ExpressionTerm
-)
+Term: TypeAlias = VarTerm | ConstantTerm | UnaryOpTerm | CallTerm | ExpressionTerm

@@ -8,6 +8,7 @@ from typing import NamedTuple
 
 class TokenType(Enum):
     """Represents a token types."""
+
     KEYWORD = 0
     SYMBOL = 1
     INTEGER_CONSTANT = 2
@@ -64,6 +65,7 @@ _SYMBOLS: set[str] = {
 
 class Token(NamedTuple):
     """Represents a token with its type and value."""
+
     token_type: TokenType
     value: str
 
@@ -154,6 +156,7 @@ def tokenize_program(source_path: Path) -> Iterator[Token]:
     Yields:
         Iterator[Token]: A generator that yields tokens.
     """
+
     def _file_lines() -> Iterator[str]:
         with open(source_path) as file:
             yield from file

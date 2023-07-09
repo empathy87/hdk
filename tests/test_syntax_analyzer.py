@@ -6,9 +6,8 @@ from xml.dom.minidom import Document, Element
 
 from _pytest.fixtures import fixture
 
-from hdk.jack_analyzer.parser import TokensIterator, parse_class
-
-from hdk.jack_analyzer.tokenizer import tokenize_program, to_xml
+from hdk.jack.parser import TokensIterator, parse_class
+from hdk.jack.tokenizer import to_xml, tokenize_program
 
 
 @fixture
@@ -32,6 +31,7 @@ def compare_elements(element1: Element, element2: Element) -> bool:
     Returns:
         bool: True if the elements are equal, False otherwise.
     """
+
     def compare_node_values() -> bool:
         """Compares the node values of two XML elements.
 
@@ -46,7 +46,10 @@ def compare_elements(element1: Element, element2: Element) -> bool:
         node_value2 = element2.nodeValue.replace(" ", "").replace("\t", "")
         return node_value1 == node_value2
 
-    if len(element1.childNodes) != len(element2.childNodes) or not compare_node_values():
+    if (
+        len(element1.childNodes) != len(element2.childNodes)
+        or not compare_node_values()
+    ):
         return False
     for i in range(len(element1.childNodes)):
         if not compare_elements(element1.childNodes[i], element2.childNodes[i]):
@@ -61,7 +64,8 @@ def test_tokenizer_programs(tmpdir_with_programs):
         tmpdir_with_programs: Temporary directory containing the test programs.
 
     Raises:
-        AssertionError: If a mismatch is found between the tokenizer output and the expected XML output.
+        AssertionError: If a mismatch is found between the tokenizer output and the
+            expected XML output.
     """
     programs = [
         "ArrayTest\\Main.jack",
@@ -75,7 +79,7 @@ def test_tokenizer_programs(tmpdir_with_programs):
     for path in programs:
         full_path = tmpdir_with_programs / path
         my_dom_tree = to_xml(tokenize_program(full_path))
-        file_to_compare = open(full_path.parents[0] / (full_path.stem + "T.xml"), "r")
+        file_to_compare = open(full_path.parents[0] / (full_path.stem + "T.xml"))
         compare_to_dom_tree = xml.dom.minidom.parse(file_to_compare)
         _clean_formatting(compare_to_dom_tree)
         assert compare_elements(
@@ -90,7 +94,8 @@ def test_parser_program(tmpdir_with_programs):
         tmpdir_with_programs (path): Temporary directory containing the test programs.
 
     Raises:
-        AssertionError: If a mismatch is found between the parser output and the expected XML output.
+        AssertionError: If a mismatch is found between the parser output and
+            the expected XML output.
     """
     programs = [
         "ArrayTest\\Main.jack",
@@ -107,7 +112,7 @@ def test_parser_program(tmpdir_with_programs):
         d_tree = Document()
         d_tree.appendChild(parse_class(program_tokens).to_xml(d_tree))
         compare_to_file_path = full_path.parents[0] / (full_path.stem + ".xml")
-        file_to_compare = open(compare_to_file_path, "r")
+        file_to_compare = open(compare_to_file_path)
         compare_to_tree = xml.dom.minidom.parse(file_to_compare)
         _clean_formatting(compare_to_tree)
         assert compare_elements(
@@ -118,8 +123,8 @@ def test_parser_program(tmpdir_with_programs):
 def _clean_formatting(element: Element):
     """Cleans the formatting of an XML element.
 
-    This function removes any empty text nodes and leading/trailing whitespace from the text nodes
-    within the given element.
+    This function removes any empty text nodes and leading/trailing whitespace
+    from the text nodes within the given element.
 
     Args:
         element (Element): The XML element to clean the formatting for.

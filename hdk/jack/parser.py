@@ -1,7 +1,8 @@
 """Functions for parsing tokens into Jack structures."""
 from collections.abc import Iterable, Iterator
 
-from hdk.jack_analyzer.syntax import (
+from hdk.jack.syntax import (
+    CallTerm,
     Class,
     ClassVarDeclaration,
     ConstantTerm,
@@ -17,7 +18,6 @@ from hdk.jack_analyzer.syntax import (
     ReturnStatement,
     Statements,
     SubroutineBody,
-    SubroutineCallTerm,
     SubroutineDeclaration,
     Term,
     UnaryOpTerm,
@@ -25,7 +25,7 @@ from hdk.jack_analyzer.syntax import (
     VarTerm,
     WhileStatement,
 )
-from hdk.jack_analyzer.tokenizer import Token, TokenType
+from hdk.jack.tokenizer import Token, TokenType
 
 
 class TokensIterator(Iterator[Token]):
@@ -268,7 +268,7 @@ def parse_while_statement(tokens: TokensIterator) -> WhileStatement:
     next(tokens), next(tokens)
     statements = parse_statements(tokens)
     next(tokens)
-    return WhileStatement(condition=expression, body=statements)
+    return WhileStatement(test=expression, body=statements)
 
 
 def parse_if_statement(tokens: TokensIterator) -> IfStatement:
@@ -286,11 +286,11 @@ def parse_if_statement(tokens: TokensIterator) -> IfStatement:
     statements_if = parse_statements(tokens)
     next(tokens)
     if tokens.peek().value != "else":
-        return IfStatement(condition=expression, if_=statements_if, else_=None)
+        return IfStatement(test=expression, if_=statements_if, else_=None)
     next(tokens), next(tokens)
     statements_else = parse_statements(tokens)
     next(tokens)
-    return IfStatement(condition=expression, if_=statements_if, else_=statements_else)
+    return IfStatement(test=expression, if_=statements_if, else_=statements_else)
 
 
 def parse_statements(tokens: TokensIterator) -> Statements:
@@ -343,7 +343,7 @@ def parse_term(tokens: TokensIterator) -> Term:
                 return var_term
             elif next_term_token.value == "(":
                 next(tokens)
-                call_term = SubroutineCallTerm(
+                call_term = CallTerm(
                     owner=None, name=value, arguments=parse_expressions(tokens)
                 )
                 next(tokens)
@@ -352,7 +352,7 @@ def parse_term(tokens: TokensIterator) -> Term:
                 next(tokens)
                 owner, name = token.value, next(tokens).value
                 next(tokens)
-                call_term = SubroutineCallTerm(
+                call_term = CallTerm(
                     owner=owner, name=name, arguments=parse_expressions(tokens)
                 )
                 next(tokens)
