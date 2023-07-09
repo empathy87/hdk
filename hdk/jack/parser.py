@@ -207,6 +207,15 @@ def parse_let_statement(tokens: TokensIterator) -> s.LetStatement:
     )
 
 
+def parse_subroutine_call(cls, tokens):
+    name, owner = next(tokens).value, None
+    if tokens.peek().value == ".":
+        tokens.skip(".")
+        owner, name = name, next(tokens).value
+    expressions = parse_expressions(tokens)
+    return cls(owner=owner, name=name, arguments=expressions)
+
+
 def parse_do_statement(tokens: TokensIterator) -> s.DoStatement:
     """Parses a do statement from the given tokens.
 
@@ -216,12 +225,13 @@ def parse_do_statement(tokens: TokensIterator) -> s.DoStatement:
     Returns:
         DoStatement: The parsed do statement.
     """
-    name, owner = next(tokens).value, None
-    if tokens.peek().value == ".":
-        tokens.skip(".")
-        owner, name = name, next(tokens).value
-    expressions = parse_expressions(tokens)
-    return s.DoStatement(owner=owner, name=name, arguments=expressions)
+    return parse_subroutine_call(s.DoStatement, tokens)
+    # name, owner = next(tokens).value, None
+    # if tokens.peek().value == ".":
+    #     tokens.skip(".")
+    #     owner, name = name, next(tokens).value
+    # expressions = parse_expressions(tokens)
+    # return s.DoStatement(owner=owner, name=name, arguments=expressions)
 
 
 def parse_return_statement(tokens: TokensIterator) -> s.ReturnStatement:
