@@ -405,16 +405,16 @@ class SubroutineBody(AbstractSyntaxTree):
     """Represents the body of a subroutine.
 
     Attributes:
-        var_declarations: The list of variable declarations.
+        variables: The list of variable declarations.
         statements: The statements inside the subroutine.
     """
 
-    var_declarations: list[VarDeclaration]
+    variables: list[VarDeclaration]
     statements: Statements
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("subroutineBody")
-        _add_children(element, "{", self.var_declarations, self.statements, "}")
+        _add_children(element, "{", self.variables, self.statements, "}")
         return element
 
 
@@ -424,14 +424,14 @@ class SubroutineDeclaration(AbstractSyntaxTree):
 
     Attributes:
         type_: The type of the subroutine.
-        return_type: The return type of the subroutine.
+        returns: The return type of the subroutine.
         name: The name of the subroutine.
         parameters: The parameters of the subroutine.
         body: The body of the subroutine.
     """
 
     type_: str
-    return_type: str
+    returns: str
     name: str
     parameters: ParameterList
     body: SubroutineBody
@@ -439,14 +439,14 @@ class SubroutineDeclaration(AbstractSyntaxTree):
     @property
     def is_identifier(self) -> bool:
         """True if return type is identifier."""
-        return self.return_type not in {"int", "char", "boolean", "void"}
+        return self.returns not in {"int", "char", "boolean", "void"}
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("subroutineDec")
         _add_children(
             element,
             ("keyword", self.type_),
-            ("identifier" if self.is_identifier else "keyword", self.return_type),
+            ("identifier" if self.is_identifier else "keyword", self.returns),
             ("identifier", self.name),
             "(",
             self.parameters,
