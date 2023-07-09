@@ -187,6 +187,15 @@ def parse_expressions(tokens: TokensIterator) -> s.Expressions:
     return expression_list
 
 
+def parse_index(tokens: TokensIterator) -> s.Expression | None:
+    if tokens.peek().value != "[":
+        return None
+    tokens.skip("[")
+    index = parse_expression(tokens)
+    tokens.skip("]")
+    return index
+
+
 def parse_let_statement(tokens: TokensIterator) -> s.LetStatement:
     """Parses a let statement from the given tokens.
 
@@ -196,19 +205,18 @@ def parse_let_statement(tokens: TokensIterator) -> s.LetStatement:
     Returns:
         LetStatement: The parsed let statement.
     """
-    var_name, token, var_expression = next(tokens), next(tokens), None
-    if token.value == "[":
-        var_expression = parse_expression(tokens)
-        tokens.skip("]", "=")
+    var_name = next(tokens).value
+    index = parse_index(tokens)
+    tokens.skip("=")
     return s.LetStatement(
-        var_name=var_name.value,
-        index=var_expression,
+        var_name=var_name,
+        index=index,
         expression=parse_expression(tokens),
     )
 
 
-def parse_subroutine_call(cls, tokens):
-    name, owner = next(tokens).value, None
+def parse_subroutine_call(cls, tokens, name=None):
+    name, owner = name or next(tokens).value, None
     if tokens.peek().value == ".":
         tokens.skip(".")
         owner, name = name, next(tokens).value
@@ -226,12 +234,6 @@ def parse_do_statement(tokens: TokensIterator) -> s.DoStatement:
         DoStatement: The parsed do statement.
     """
     return parse_subroutine_call(s.DoStatement, tokens)
-    # name, owner = next(tokens).value, None
-    # if tokens.peek().value == ".":
-    #     tokens.skip(".")
-    #     owner, name = name, next(tokens).value
-    # expressions = parse_expressions(tokens)
-    # return s.DoStatement(owner=owner, name=name, arguments=expressions)
 
 
 def parse_return_statement(tokens: TokensIterator) -> s.ReturnStatement:
@@ -328,22 +330,9 @@ def parse_term(tokens: TokensIterator) -> s.Term:
         case Token(token_type=TokenType.KEYWORD, value=value):
             return s.ConstantTerm(type_=s.ConstantType.KEYWORD, value=value)
         case Token(token_type=TokenType.IDENTIFIER, value=value):
-            if next_token_value == "[":
-                tokens.skip("[")
-                var_term = s.VarTerm(var_name=value, index=parse_expression(tokens))
-                tokens.skip("]")
-                return var_term
-            elif next_token_value == "(":
-                return s.CallTerm(
-                    owner=None, name=value, arguments=parse_expressions(tokens)
-                )
-            elif next_token_value == ".":
-                tokens.skip(".")
-                owner, name = token.value, next(tokens).value
-                return s.CallTerm(
-                    owner=owner, name=name, arguments=parse_expressions(tokens)
-                )
-            return s.VarTerm(var_name=value, index=None)
+            if next_token_value in {"(", "."}:
+                return parse_subroutine_call(s.CallTerm, tokens, token.value)
+            return s.VarTerm(var_name=value, index=parse_index(tokens))
         case Token(token_type=TokenType.SYMBOL, value="("):
             expression_term = s.ExpressionTerm(expression=parse_expression(tokens))
             tokens.skip(")")
