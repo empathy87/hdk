@@ -52,6 +52,7 @@ class TokensIterator(Iterator[Token]):
         return value
 
     def skip(self, *args: str):
+        """Skips and check tokens values by arguments."""
         for arg in args:
             token = next(self)
             if token.value != arg:
@@ -60,6 +61,8 @@ class TokensIterator(Iterator[Token]):
 
 def parse_var_declaration(tokens: TokensIterator) -> s.VarDeclaration:
     """Parses a variable declaration from the given tokens.
+
+    varDec = 'var' type varName (',' varName)';'
 
     Args:
         tokens: The iterator of tokens.
@@ -77,6 +80,8 @@ def parse_var_declaration(tokens: TokensIterator) -> s.VarDeclaration:
 def parse_class_var_declaration(tokens: TokensIterator) -> s.ClassVarDeclaration:
     """Parses a class variable declaration from the given tokens.
 
+    classVarDec = ('static'|'field') type varName(',' varName)*';'
+
     Args:
         tokens: The iterator of tokens.
 
@@ -92,6 +97,8 @@ def parse_class_var_declaration(tokens: TokensIterator) -> s.ClassVarDeclaration
 
 def parse_parameter_list(tokens: TokensIterator) -> s.ParameterList:
     """Parses a parameter list from the given tokens.
+
+    parameterList = ((type varName)(',' type varName)*)?
 
     Args:
         tokens: The iterator of tokens.
@@ -110,6 +117,8 @@ def parse_parameter_list(tokens: TokensIterator) -> s.ParameterList:
 
 def parse_subroutine_body(tokens: TokensIterator) -> s.SubroutineBody:
     """Parses a subroutine body from the given tokens.
+
+    'subroutineBody = {' varDec* statements '}'
 
     Args:
         tokens: The iterator of tokens.
@@ -130,6 +139,8 @@ def parse_subroutine_body(tokens: TokensIterator) -> s.SubroutineBody:
 def parse_subroutine_declaration(tokens: TokensIterator) -> s.SubroutineDeclaration:
     """Parses a subroutine declaration from the given tokens.
 
+    subroutineDec = ('constructor'|'function'|'method') ('void'|type) subroutineName
+
     Args:
         tokens: The iterator of tokens.
 
@@ -149,6 +160,8 @@ def parse_subroutine_declaration(tokens: TokensIterator) -> s.SubroutineDeclarat
 
 def parse_class(tokens: TokensIterator) -> s.Class:
     """Parses a class from the given tokens.
+
+    class = 'class' className '{'classVarDec* subroutineDec*'}'
 
     Args:
         tokens: The iterator of tokens.
@@ -171,6 +184,8 @@ def parse_class(tokens: TokensIterator) -> s.Class:
 def parse_expressions(tokens: TokensIterator) -> s.Expressions:
     """Parses a list of expressions from the given tokens.
 
+    expression = term (op term)*
+
     Args:
         tokens: The iterator of tokens.
 
@@ -188,6 +203,16 @@ def parse_expressions(tokens: TokensIterator) -> s.Expressions:
 
 
 def parse_index(tokens: TokensIterator) -> s.Expression | None:
+    """Parses an index of variable.
+
+    index = (expression)?
+
+    Args:
+        tokens: The iterator of tokens.
+
+    Returns: The parsed index.
+
+    """
     if tokens.peek().value != "[":
         return None
     tokens.skip("[")
@@ -198,6 +223,8 @@ def parse_index(tokens: TokensIterator) -> s.Expression | None:
 
 def parse_let_statement(tokens: TokensIterator) -> s.LetStatement:
     """Parses a let statement from the given tokens.
+
+    letStatement = 'let' varName(index) '=' expression';'
 
     Args:
         tokens: The iterator of tokens.
@@ -215,7 +242,18 @@ def parse_let_statement(tokens: TokensIterator) -> s.LetStatement:
     )
 
 
-def parse_subroutine_call(cls, tokens, name=None):
+def parse_subroutine_call(cls, tokens: TokensIterator, name=None):
+    """Parses a subroutine call from the given tokens.
+
+    subroutineCall = subroutineName'('expressionList')'|
+                     (className|varname)'.'subroutineName'('expressionList')'
+
+    Args:
+        tokens: The iterator of tokens.
+
+    Returns:
+        LetStatement: The parsed let statement.
+    """
     name, owner = name or next(tokens).value, None
     if tokens.peek().value == ".":
         tokens.skip(".")
@@ -226,6 +264,8 @@ def parse_subroutine_call(cls, tokens, name=None):
 
 def parse_do_statement(tokens: TokensIterator) -> s.DoStatement:
     """Parses a do statement from the given tokens.
+
+    doStatement = 'do' subroutineCall';'
 
     Args:
         tokens: The iterator of tokens.
@@ -238,6 +278,8 @@ def parse_do_statement(tokens: TokensIterator) -> s.DoStatement:
 
 def parse_return_statement(tokens: TokensIterator) -> s.ReturnStatement:
     """Parses a return statement from the given tokens.
+
+    returnStatement = 'return' expression?';'
 
     Args:
         tokens: The iterator of tokens.
@@ -252,6 +294,8 @@ def parse_return_statement(tokens: TokensIterator) -> s.ReturnStatement:
 
 def parse_while_statement(tokens: TokensIterator) -> s.WhileStatement:
     """Parses a while statement from the given tokens.
+
+    whileStatement = 'while' '('expression')''{'statements'}'
 
     Args:
         tokens: The iterator of tokens.
@@ -269,6 +313,8 @@ def parse_while_statement(tokens: TokensIterator) -> s.WhileStatement:
 
 def parse_if_statement(tokens: TokensIterator) -> s.IfStatement:
     """Parses an if statement from the given tokens.
+
+    ifStatement = 'if' '('expression')''{'statements'}' ('else' '{'statements'}')?
 
     Args:
         tokens: The iterator of tokens.
@@ -292,6 +338,8 @@ def parse_if_statement(tokens: TokensIterator) -> s.IfStatement:
 def parse_statements(tokens: TokensIterator) -> s.Statements:
     """Parses a list of statements from the given tokens.
 
+    statements = statement*
+
     Args:
         tokens: The iterator of tokens.
 
@@ -314,6 +362,14 @@ def parse_statements(tokens: TokensIterator) -> s.Statements:
 
 def parse_term(tokens: TokensIterator) -> s.Term:
     """Parses a term from the given tokens.
+
+    term = integerConstant|
+           stringConstant|
+           keywordConstant|
+           varName(index)|
+           subroutineCall|
+           '('expression')'|
+           unaryOp term
 
     Args:
         tokens: The iterator of tokens.
@@ -345,6 +401,8 @@ def parse_term(tokens: TokensIterator) -> s.Term:
 
 def parse_expression(tokens: TokensIterator) -> s.Expression:
     """Parses an expression from the given tokens.
+
+    expression = term (op term)*
 
     Args:
         tokens: The iterator of tokens.

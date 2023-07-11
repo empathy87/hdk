@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import abc
+import re
 from collections import UserList
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, ClassVar, NamedTuple, TypeAlias
 from xml.dom.minidom import Document, Element
+
+from hdk.jack.tokenizer import _KEYWORDS
 
 
 def _add_child(parent: Element, value: str, tag: str = "symbol"):
@@ -123,6 +126,19 @@ class ConstantTerm(AbstractSyntaxTree):
         _add_child(element, self.value, ConstantTerm._type_to_str[self.type_])
         return element
 
+    def __post_init__(self):
+        match self.type_:
+            case ConstantType.KEYWORD:
+                if self.value not in _KEYWORDS:
+                    raise ValueError(
+                        f"Invalid value {self.value!r} for keyword constant term."
+                    )
+            case ConstantType.INTEGER:
+                if not self.value.isdigit():
+                    raise ValueError(
+                        f"Invalid value {self.value!r} for integer constant term."
+                    )
+
 
 @dataclass(frozen=True)
 class VarTerm(AbstractSyntaxTree):
@@ -142,6 +158,10 @@ class VarTerm(AbstractSyntaxTree):
         if self.index is not None:
             _add_children(element, "[", self.index, "]")
         return element
+
+    def __post_init__(self):
+        if not _is_symbol_valid(self.var_name):
+            raise ValueError(f"Invalid var name {self.var_name!r} for var term.")
 
 
 @dataclass(frozen=True)
@@ -168,6 +188,12 @@ class SubroutineCall(AbstractSyntaxTree):
             self.arguments,
             ")",
         )
+
+    def __post_init__(self):
+        if self.owner is not None and not _is_symbol_valid(self.owner):
+            raise ValueError(f"Invalid owner name {self.owner!r} for subroutine call.")
+        if not _is_symbol_valid(self.name):
+            raise ValueError(f"Invalid name {self.name!r} for subroutine call.")
 
     @abc.abstractmethod
     def to_xml(self, doc: Document) -> Element:
@@ -217,6 +243,10 @@ class UnaryOpTerm(AbstractSyntaxTree):
         _add_children(element, self.unaryOp, self.term)
         return element
 
+    def __post_init__(self):
+        if self.unaryOp not in {"-", "~"}:
+            raise ValueError(f"Invalid unary op {self.unaryOp!r} for unary op term.")
+
 
 @dataclass(frozen=True)
 class Expression(AbstractSyntaxTree):
@@ -236,6 +266,11 @@ class Expression(AbstractSyntaxTree):
         for op, term in self.term_list:
             _add_children(element, ("symbol", op), term)
         return element
+
+    def __post_init__(self):
+        for op, _ in self.term_list:
+            if op not in {"-", "+", "*", "/", "&", "|", ">", "<", "="}:
+                raise ValueError(f"Invalid op {op!r} for expression.")
 
 
 class Expressions(UserList[Expression], AbstractSyntaxTree):
@@ -297,6 +332,10 @@ class LetStatement(AbstractSyntaxTree):
             _add_children(element, "[", self.index, "]")
         _add_children(element, "=", self.expression, ";")
         return element
+
+    def __post_init__(self):
+        if not _is_symbol_valid(self.var_name):
+            raise ValueError(f"Invalid var_name {self.var_name!r} for let statement.")
 
 
 @dataclass(frozen=True)
@@ -399,6 +438,13 @@ class VarDeclaration(AbstractSyntaxTree):
         _add_child(element, ";")
         return element
 
+    def __post_init__(self):
+        if not _is_symbol_valid(self.type_):
+            raise ValueError(f"Invalid type {self.type_!r} for var declaration.")
+        for name in self.names:
+            if not _is_symbol_valid(name):
+                raise ValueError(f"Invalid name {name!r} for var declaration.")
+
 
 @dataclass(frozen=True)
 class SubroutineBody(AbstractSyntaxTree):
@@ -455,6 +501,16 @@ class SubroutineDeclaration(AbstractSyntaxTree):
         )
         return element
 
+    def __post_init__(self):
+        if not _is_symbol_valid(self.type_):
+            raise ValueError(f"Invalid type {self.type_!r} for subroutine declaration.")
+        if not _is_symbol_valid(self.returns):
+            raise ValueError(
+                f"Invalid returns {self.returns!r} for subroutine declaration."
+            )
+        if not _is_symbol_valid(self.name):
+            raise ValueError(f"Invalid name {self.name!r} for subroutine declaration.")
+
 
 @dataclass(frozen=True)
 class ClassVarDeclaration(AbstractSyntaxTree):
@@ -486,6 +542,17 @@ class ClassVarDeclaration(AbstractSyntaxTree):
         _add_child(element, ";")
         return element
 
+    def __post_init__(self):
+        if not _is_symbol_valid(self.type_):
+            raise ValueError(f"Invalid type {self.type_!r} for class var declaration.")
+        if not _is_symbol_valid(self.modifier):
+            raise ValueError(
+                f"Invalid modifier {self.modifier!r} for class var declaration."
+            )
+        for name in self.names:
+            if not _is_symbol_valid(name):
+                raise ValueError(f"Invalid name {name!r} for class var declaration.")
+
 
 @dataclass(frozen=True)
 class Class(AbstractSyntaxTree):
@@ -513,6 +580,35 @@ class Class(AbstractSyntaxTree):
             "}",
         )
         return element
+
+    def __post_init__(self):
+        if not _is_symbol_valid(self.name):
+            raise ValueError(f"Invalid name {self.name!r} for class.")
+
+
+def _is_symbol_valid(symbol: str) -> bool:
+    """Checks if a symbol is valid.
+
+    A symbol can be any sequence of letters, digits, underscores (_), dot (.),
+    dollar sign ($), and colon (:) that does not begin with a digit.
+
+    Args:
+        symbol: A string representing the symbol.
+
+    Returns:
+        True if the symbol is correct, False otherwise.
+
+    Typical usage example:
+        >>> _is_symbol_valid('_R0$:56.')
+        True
+        >>> _is_symbol_valid('5A')
+        False
+        >>> _is_symbol_valid('A97^')
+        False
+    """
+    if len(symbol) == 0 or symbol[0].isdigit():
+        return False
+    return re.fullmatch(r"[\w_$\.:]+", symbol) is not None
 
 
 Term: TypeAlias = VarTerm | ConstantTerm | UnaryOpTerm | CallTerm | ExpressionTerm

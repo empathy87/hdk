@@ -74,7 +74,7 @@ def tokenize(text: str) -> Iterator[Token]:
     """Tokenizes the given text into a sequence of tokens.
 
     Args:
-        text: The input text to be tokenized.
+        text: The input line to be tokenized.
 
     Yields:
         Iterator[Token]: A generator that yields tokens.
@@ -136,15 +136,13 @@ def tokenize_source_code(lines: Iterable[str]) -> Iterator[Token]:
         line = line.strip().split("//")[0]
         if line.startswith("/*"):
             is_comment = True
+        if not (len(line) == 0 or is_comment):
+            try:
+                yield from tokenize(line)
+            except ValueError as e:
+                raise ValueError(f"Cannot parse line {line_num + 1}.") from e
         if line.endswith("*/"):
             is_comment = False
-            continue
-        if len(line) == 0 or is_comment:
-            continue
-        try:
-            yield from tokenize(line)
-        except ValueError as e:
-            raise ValueError(f"Cannot parse line {line_num + 1}.") from e
 
 
 def tokenize_program(source_path: Path) -> Iterator[Token]:
@@ -180,7 +178,6 @@ def to_xml(tokens: Iterable[Token]) -> xml.dom.minidom.Document:
         TokenType.STRING_CONSTANT: "stringConstant",
         TokenType.IDENTIFIER: "identifier",
     }
-
     dom_tree = xml.dom.minidom.parseString("<tokens></tokens>")
     for token in tokens:
         newToken = dom_tree.createElement(type_to_tag[token.token_type])
