@@ -77,7 +77,7 @@ def tokenize(text: str) -> Iterator[Token]:
         text: The input line to be tokenized.
 
     Yields:
-        Iterator[Token]: A generator that yields tokens.
+        A generator that yields tokens.
     """
     current_token = ""
     for char in text:
@@ -106,7 +106,7 @@ def build_token(token: str) -> Token:
         token: The string to be converted into a token.
 
     Returns:
-        Token: The token object representing the given string.
+        The token object representing the given string.
     """
     if token in _SYMBOLS:
         return Token(TokenType.SYMBOL, token)
@@ -126,7 +126,7 @@ def tokenize_source_code(lines: Iterable[str]) -> Iterator[Token]:
         lines: An iterable of strings representing the lines of source code.
 
     Yields:
-        Iterator[Token]: A generator that yields tokens.
+        A generator that yields tokens.
 
     Raises:
         ValueError: If there is an error parsing a line of source code.
@@ -152,7 +152,7 @@ def tokenize_program(source_path: Path) -> Iterator[Token]:
         source_path: The path to the source code file.
 
     Yields:
-        Iterator[Token]: A generator that yields tokens.
+        A generator that yields tokens.
     """
 
     def _file_lines() -> Iterator[str]:
@@ -169,7 +169,7 @@ def to_xml(tokens: Iterable[Token]) -> xml.dom.minidom.Document:
         tokens: An iterable of Token objects.
 
     Returns:
-        Document: The XML document representing the tokens.
+        The XML document representing the tokens.
     """
     type_to_tag: dict[TokenType, str] = {
         TokenType.KEYWORD: "keyword",

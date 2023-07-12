@@ -29,14 +29,14 @@ def compare_elements(element1: Element, element2: Element) -> bool:
         element2: The second XML element.
 
     Returns:
-        bool: True if the elements are equal, False otherwise.
+        True if the elements are equal, False otherwise.
     """
 
     def compare_node_values() -> bool:
         """Compares the node values of two XML elements.
 
         Returns:
-            bool: True if the node values are equal, False otherwise.
+            True if the node values are equal, False otherwise.
         """
         if element1.nodeName != element2.nodeName:
             return False

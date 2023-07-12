@@ -40,9 +40,9 @@ def _add_children(parent: Element, *children: Any):
         match child:
             case AbstractSyntaxTree():
                 parent.appendChild(child.to_xml(parent.ownerDocument))
-            case str() as value:
+            case str(value):
                 _add_child(parent, value=value)
-            case (str() as tag, str() as value):
+            case (str(tag), str(value)):
                 _add_child(parent, value=value, tag=tag)
             case list():
                 _add_children(parent, *tuple(child))
@@ -96,7 +96,7 @@ class ParameterList(UserList[Parameter], AbstractSyntaxTree):
         return element
 
 
-class ConstantType(Enum):
+class ConstantKind(Enum):
     """Represents constant types."""
 
     KEYWORD = 0
@@ -109,35 +109,28 @@ class ConstantTerm(AbstractSyntaxTree):
     """Represents a constant term.
 
     Attributes:
-        type_: The type of the constant term.
+        kind: The type of the constant term.
         value: The value of the constant term.
     """
 
-    type_: ConstantType
+    kind: ConstantKind
     value: str
-    _type_to_str: ClassVar[dict[ConstantType, str]] = {
-        ConstantType.KEYWORD: "keyword",
-        ConstantType.INTEGER: "integerConstant",
-        ConstantType.STRING: "stringConstant",
+    _type_to_str: ClassVar[dict[ConstantKind, str]] = {
+        ConstantKind.KEYWORD: "keyword",
+        ConstantKind.INTEGER: "integerConstant",
+        ConstantKind.STRING: "stringConstant",
     }
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("term")
-        _add_child(element, self.value, ConstantTerm._type_to_str[self.type_])
+        _add_child(element, self.value, ConstantTerm._type_to_str[self.kind])
         return element
 
     def __post_init__(self):
-        match self.type_:
-            case ConstantType.KEYWORD:
-                if self.value not in _KEYWORDS:
-                    raise ValueError(
-                        f"Invalid value {self.value!r} for keyword constant term."
-                    )
-            case ConstantType.INTEGER:
-                if not self.value.isdigit():
-                    raise ValueError(
-                        f"Invalid value {self.value!r} for integer constant term."
-                    )
+        if self.kind is ConstantKind.KEYWORD and self.value not in _KEYWORDS:
+            raise ValueError(f"Invalid value {self.value!r} for keyword constant term.")
+        if self.kind is ConstantKind.INTEGER and not self.value.isdigit():
+            raise ValueError(f"Invalid value {self.value!r} for integer constant term.")
 
 
 @dataclass(frozen=True)
@@ -160,7 +153,7 @@ class VarTerm(AbstractSyntaxTree):
         return element
 
     def __post_init__(self):
-        if not _is_symbol_valid(self.var_name):
+        if not _is_identifier_valid(self.var_name):
             raise ValueError(f"Invalid var name {self.var_name!r} for var term.")
 
 
@@ -190,9 +183,9 @@ class SubroutineCall(AbstractSyntaxTree):
         )
 
     def __post_init__(self):
-        if self.owner is not None and not _is_symbol_valid(self.owner):
+        if self.owner is not None and not _is_identifier_valid(self.owner):
             raise ValueError(f"Invalid owner name {self.owner!r} for subroutine call.")
-        if not _is_symbol_valid(self.name):
+        if not _is_identifier_valid(self.name):
             raise ValueError(f"Invalid name {self.name!r} for subroutine call.")
 
     @abc.abstractmethod
@@ -235,6 +228,11 @@ class UnaryOpTerm(AbstractSyntaxTree):
         term: The term.
     """
 
+    _ALLOWED_UNARY_OPS: ClassVar[set[str]] = {
+        "-",
+        "~",
+    }
+
     unaryOp: str
     term: Term
 
@@ -244,7 +242,7 @@ class UnaryOpTerm(AbstractSyntaxTree):
         return element
 
     def __post_init__(self):
-        if self.unaryOp not in {"-", "~"}:
+        if self.unaryOp not in self._ALLOWED_UNARY_OPS:
             raise ValueError(f"Invalid unary op {self.unaryOp!r} for unary op term.")
 
 
@@ -256,6 +254,8 @@ class Expression(AbstractSyntaxTree):
         first_term: The first (mandatory) term of the expression.
         term_list: A list of tuples containing operators and terms.
     """
+
+    _ALLOWED_OPS: ClassVar[set[str]] = {"-", "+", "*", "/", "&", "|", ">", "<", "="}
 
     first_term: Term
     term_list: list[tuple[str, Term]]
@@ -269,7 +269,7 @@ class Expression(AbstractSyntaxTree):
 
     def __post_init__(self):
         for op, _ in self.term_list:
-            if op not in {"-", "+", "*", "/", "&", "|", ">", "<", "="}:
+            if op not in self._ALLOWED_OPS:
                 raise ValueError(f"Invalid op {op!r} for expression.")
 
 
@@ -334,7 +334,7 @@ class LetStatement(AbstractSyntaxTree):
         return element
 
     def __post_init__(self):
-        if not _is_symbol_valid(self.var_name):
+        if not _is_identifier_valid(self.var_name):
             raise ValueError(f"Invalid var_name {self.var_name!r} for let statement.")
 
 
@@ -419,13 +419,15 @@ class VarDeclaration(AbstractSyntaxTree):
         names: The names of the variables.
     """
 
+    _BUILT_IN_TYPES: ClassVar[set[str]] = {"int", "char", "boolean"}
+
     type_: str
     names: list[str]
 
     @property
     def is_identifier(self) -> bool:
         """True if type is identifier."""
-        return self.type_ not in {"int", "char", "boolean"}
+        return self.type_ not in self._BUILT_IN_TYPES
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("varDec")
@@ -439,10 +441,10 @@ class VarDeclaration(AbstractSyntaxTree):
         return element
 
     def __post_init__(self):
-        if not _is_symbol_valid(self.type_):
+        if not self.is_identifier and not _is_identifier_valid(self.type_):
             raise ValueError(f"Invalid type {self.type_!r} for var declaration.")
         for name in self.names:
-            if not _is_symbol_valid(name):
+            if not _is_identifier_valid(name):
                 raise ValueError(f"Invalid name {name!r} for var declaration.")
 
 
@@ -469,14 +471,17 @@ class SubroutineDeclaration(AbstractSyntaxTree):
     """Represents a subroutine declaration.
 
     Attributes:
-        type_: The type of the subroutine.
+        kind: The type of the subroutine.
         returns: The return type of the subroutine.
         name: The name of the subroutine.
         parameters: The parameters of the subroutine.
         body: The body of the subroutine.
     """
 
-    type_: str
+    _BUILT_IN_KINDS: ClassVar[set[str]] = {"constructor", "function", "method"}
+    _BUILT_IN_RETURNS: ClassVar[set[str]] = {"int", "char", "boolean", "void"}
+
+    kind: str
     returns: str
     name: str
     parameters: ParameterList
@@ -485,13 +490,13 @@ class SubroutineDeclaration(AbstractSyntaxTree):
     @property
     def is_identifier(self) -> bool:
         """True if return type is identifier."""
-        return self.returns not in {"int", "char", "boolean", "void"}
+        return self.returns not in self._BUILT_IN_RETURNS
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("subroutineDec")
         _add_children(
             element,
-            ("keyword", self.type_),
+            ("keyword", self.kind),
             ("identifier" if self.is_identifier else "keyword", self.returns),
             ("identifier", self.name),
             "(",
@@ -502,13 +507,15 @@ class SubroutineDeclaration(AbstractSyntaxTree):
         return element
 
     def __post_init__(self):
-        if not _is_symbol_valid(self.type_):
-            raise ValueError(f"Invalid type {self.type_!r} for subroutine declaration.")
-        if not _is_symbol_valid(self.returns):
+        if self.kind not in self._BUILT_IN_KINDS:
+            raise ValueError(f"Invalid type {self.kind!r} for subroutine declaration.")
+        if self.returns not in self._BUILT_IN_RETURNS and not _is_identifier_valid(
+            self.returns
+        ):
             raise ValueError(
                 f"Invalid returns {self.returns!r} for subroutine declaration."
             )
-        if not _is_symbol_valid(self.name):
+        if not _is_identifier_valid(self.name):
             raise ValueError(f"Invalid name {self.name!r} for subroutine declaration.")
 
 
@@ -522,6 +529,9 @@ class ClassVarDeclaration(AbstractSyntaxTree):
         names: The names of the variables.
     """
 
+    _BUILT_IN_MODIFIERS: ClassVar[set[str]] = {"static", "field"}
+    _BUILT_IN_TYPES: ClassVar[set[str]] = {"int", "char", "boolean"}
+
     modifier: str
     type_: str
     names: list[str]
@@ -529,7 +539,7 @@ class ClassVarDeclaration(AbstractSyntaxTree):
     @property
     def is_identifier(self) -> bool:
         """True if type is identifier."""
-        return self.type_ not in {"int", "char", "boolean"}
+        return self.type_ not in self._BUILT_IN_TYPES
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("classVarDec")
@@ -543,14 +553,16 @@ class ClassVarDeclaration(AbstractSyntaxTree):
         return element
 
     def __post_init__(self):
-        if not _is_symbol_valid(self.type_):
+        if self.type_ not in self._BUILT_IN_TYPES and not _is_identifier_valid(
+            self.type_
+        ):
             raise ValueError(f"Invalid type {self.type_!r} for class var declaration.")
-        if not _is_symbol_valid(self.modifier):
+        if self.modifier not in self._BUILT_IN_MODIFIERS:
             raise ValueError(
                 f"Invalid modifier {self.modifier!r} for class var declaration."
             )
         for name in self.names:
-            if not _is_symbol_valid(name):
+            if not _is_identifier_valid(name):
                 raise ValueError(f"Invalid name {name!r} for class var declaration.")
 
 
@@ -582,14 +594,14 @@ class Class(AbstractSyntaxTree):
         return element
 
     def __post_init__(self):
-        if not _is_symbol_valid(self.name):
+        if not _is_identifier_valid(self.name):
             raise ValueError(f"Invalid name {self.name!r} for class.")
 
 
-def _is_symbol_valid(symbol: str) -> bool:
-    """Checks if a symbol is valid.
+def _is_identifier_valid(symbol: str) -> bool:
+    """Checks if an identifier is valid.
 
-    A symbol can be any sequence of letters, digits, underscores (_), dot (.),
+    An identifier can be any sequence of letters, digits, underscores (_), dot (.),
     dollar sign ($), and colon (:) that does not begin with a digit.
 
     Args:
@@ -599,11 +611,11 @@ def _is_symbol_valid(symbol: str) -> bool:
         True if the symbol is correct, False otherwise.
 
     Typical usage example:
-        >>> _is_symbol_valid('_R0$:56.')
+        >>> _is_identifier_valid('_R0$:56.')
         True
-        >>> _is_symbol_valid('5A')
+        >>> _is_identifier_valid('5A')
         False
-        >>> _is_symbol_valid('A97^')
+        >>> _is_identifier_valid('A97^')
         False
     """
     if len(symbol) == 0 or symbol[0].isdigit():
