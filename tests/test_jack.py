@@ -57,7 +57,7 @@ def compare_elements(element1: Element, element2: Element) -> bool:
     return True
 
 
-def test_tokenizer_programs(tmpdir_with_programs):
+def test_tokenize_programs(tmpdir_with_programs):
     """Test function to compare the output of tokenizer on a set of programs.
 
     Args:
@@ -87,7 +87,7 @@ def test_tokenizer_programs(tmpdir_with_programs):
         ), "Error."
 
 
-def test_parser_program(tmpdir_with_programs):
+def test_parse_program(tmpdir_with_programs):
     """Test function to compare the output of the parser on a set of programs.
 
     Args:

@@ -2,14 +2,13 @@
 from __future__ import annotations
 
 import abc
-import re
 from collections import UserList
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, ClassVar, NamedTuple, TypeAlias
 from xml.dom.minidom import Document, Element
 
-from hdk.jack.tokenizer import _KEYWORDS
+from hdk.jack.tokenizer import KEYWORDS
 
 
 def _add_child(parent: Element, value: str, tag: str = "symbol"):
@@ -109,25 +108,29 @@ class ConstantTerm(AbstractSyntaxTree):
     """Represents a constant term.
 
     Attributes:
-        kind: The type of the constant term.
+        kind: The kind of the constant term.
         value: The value of the constant term.
     """
 
     kind: ConstantKind
     value: str
-    _type_to_str: ClassVar[dict[ConstantKind, str]] = {
+    _KIND_TO_STR: ClassVar[dict[ConstantKind, str]] = {
         ConstantKind.KEYWORD: "keyword",
         ConstantKind.INTEGER: "integerConstant",
         ConstantKind.STRING: "stringConstant",
     }
+    _ALLOWED_KEYWORD_VALUES: ClassVar[set[str]] = {"null", "true", "false", "this"}
 
     def to_xml(self, doc: Document) -> Element:
         element = doc.createElement("term")
-        _add_child(element, self.value, ConstantTerm._type_to_str[self.kind])
+        _add_child(element, self.value, ConstantTerm._KIND_TO_STR[self.kind])
         return element
 
     def __post_init__(self):
-        if self.kind is ConstantKind.KEYWORD and self.value not in _KEYWORDS:
+        if (
+            self.kind is ConstantKind.KEYWORD
+            and self.value not in ConstantTerm._ALLOWED_KEYWORD_VALUES
+        ):
             raise ValueError(f"Invalid value {self.value!r} for keyword constant term.")
         if self.kind is ConstantKind.INTEGER and not self.value.isdigit():
             raise ValueError(f"Invalid value {self.value!r} for integer constant term.")
@@ -270,7 +273,7 @@ class Expression(AbstractSyntaxTree):
     def __post_init__(self):
         for op, _ in self.term_list:
             if op not in self._ALLOWED_OPS:
-                raise ValueError(f"Invalid op {op!r} for expression.")
+                raise ValueError(f"Invalid binary op {op!r} for expression.")
 
 
 class Expressions(UserList[Expression], AbstractSyntaxTree):
@@ -419,10 +422,9 @@ class VarDeclaration(AbstractSyntaxTree):
         names: The names of the variables.
     """
 
-    _BUILT_IN_TYPES: ClassVar[set[str]] = {"int", "char", "boolean"}
-
     type_: str
     names: list[str]
+    _BUILT_IN_TYPES: ClassVar[set[str]] = {"int", "char", "boolean"}
 
     @property
     def is_identifier(self) -> bool:
@@ -441,7 +443,7 @@ class VarDeclaration(AbstractSyntaxTree):
         return element
 
     def __post_init__(self):
-        if not self.is_identifier and not _is_identifier_valid(self.type_):
+        if self.is_identifier and not _is_identifier_valid(self.type_):
             raise ValueError(f"Invalid type {self.type_!r} for var declaration.")
         for name in self.names:
             if not _is_identifier_valid(name):
@@ -478,14 +480,14 @@ class SubroutineDeclaration(AbstractSyntaxTree):
         body: The body of the subroutine.
     """
 
-    _BUILT_IN_KINDS: ClassVar[set[str]] = {"constructor", "function", "method"}
-    _BUILT_IN_RETURNS: ClassVar[set[str]] = {"int", "char", "boolean", "void"}
-
     kind: str
     returns: str
     name: str
     parameters: ParameterList
     body: SubroutineBody
+
+    _BUILT_IN_KINDS: ClassVar[set[str]] = {"constructor", "function", "method"}
+    _BUILT_IN_RETURNS: ClassVar[set[str]] = {"int", "char", "boolean", "void"}
 
     @property
     def is_identifier(self) -> bool:
@@ -515,8 +517,6 @@ class SubroutineDeclaration(AbstractSyntaxTree):
             raise ValueError(
                 f"Invalid returns {self.returns!r} for subroutine declaration."
             )
-        if not _is_identifier_valid(self.name):
-            raise ValueError(f"Invalid name {self.name!r} for subroutine declaration.")
 
 
 @dataclass(frozen=True)
@@ -529,12 +529,12 @@ class ClassVarDeclaration(AbstractSyntaxTree):
         names: The names of the variables.
     """
 
-    _BUILT_IN_MODIFIERS: ClassVar[set[str]] = {"static", "field"}
-    _BUILT_IN_TYPES: ClassVar[set[str]] = {"int", "char", "boolean"}
-
     modifier: str
     type_: str
     names: list[str]
+
+    _BUILT_IN_MODIFIERS: ClassVar[set[str]] = {"static", "field"}
+    _BUILT_IN_TYPES: ClassVar[set[str]] = {"int", "char", "boolean"}
 
     @property
     def is_identifier(self) -> bool:
@@ -598,29 +598,21 @@ class Class(AbstractSyntaxTree):
             raise ValueError(f"Invalid name {self.name!r} for class.")
 
 
-def _is_identifier_valid(symbol: str) -> bool:
+def _is_identifier_valid(identifier: str) -> bool:
     """Checks if an identifier is valid.
 
-    An identifier can be any sequence of letters, digits, underscores (_), dot (.),
-    dollar sign ($), and colon (:) that does not begin with a digit.
+    An identifier is a sequence of letters, digits, and underscores, not starting
+    with a digit. It also should not be in keywords.
 
     Args:
-        symbol: A string representing the symbol.
+        identifier: The string representing an identifier.
 
     Returns:
-        True if the symbol is correct, False otherwise.
-
-    Typical usage example:
-        >>> _is_identifier_valid('_R0$:56.')
-        True
-        >>> _is_identifier_valid('5A')
-        False
-        >>> _is_identifier_valid('A97^')
-        False
+        True if the identifier is correct, False otherwise.
     """
-    if len(symbol) == 0 or symbol[0].isdigit():
+    if len(identifier) == 0 or identifier[0].isdigit() or identifier in KEYWORDS:
         return False
-    return re.fullmatch(r"[\w_$\.:]+", symbol) is not None
+    return identifier.isalnum()
 
 
 Term: TypeAlias = VarTerm | ConstantTerm | UnaryOpTerm | CallTerm | ExpressionTerm

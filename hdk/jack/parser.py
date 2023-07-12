@@ -8,14 +8,10 @@ from hdk.jack.tokenizer import Token, TokenType
 
 
 class TokensIterator(Iterator[Token]):
-    """Iterator for tokens. It can get the next token without a step.
+    """An iterator that could return the next token without moving forward.
 
-    Args:
-        tokens: The iterable collection of tokens.
-
-    Attributes:
-        _tokens_iterator: The iterator for the tokens.
-        _look_ahead: The next token that is being looked ahead.
+    It is useful because in LL(1) syntax grammar you need to look forward one token
+    to decide what kind of syntax structure you need to construct.
     """
 
     def __init__(self, tokens: Iterable[Token]):
@@ -24,37 +20,34 @@ class TokensIterator(Iterator[Token]):
         Args:
             tokens: The iterable collection of tokens.
         """
-        self._tokens_iterator = iter(tokens)
-        self._look_ahead: Token | None = None
+        self._tokens = iter(tokens)
+        self._next: Token | None = None
 
     def peek(self) -> Token:
-        """Gets the next token without the iterator step.
+        """Returns a token without moving the iterator forward.
 
         Returns:
             The next token.
         """
-        if self._look_ahead is None:
-            self._look_ahead = next(self._tokens_iterator)
-        return self._look_ahead
+        if self._next is None:
+            self._next = next(self._tokens)
+        return self._next
 
     def __next__(self) -> Token:
-        """Returns the next token in the iteration.
+        """Returns the next token in the iteration with moving the iterator forward.
 
         Returns:
             The next token.
         """
-        if self._look_ahead:
-            value = self._look_ahead
-        else:
-            value = next(self._tokens_iterator)
-        self._look_ahead = None
+        value = self._next or next(self._tokens)
+        self._next = None
         return value
 
     def skip(self, *args: str):
-        """Skips and check tokens values by arguments.
+        """Skips tokens asserting that their values equals to strings in args.
 
         Args:
-            *args: tokens to verify.
+            *args: String values that should be equal to the skipped tokens.
         """
         for arg in args:
             token = next(self)
@@ -65,7 +58,7 @@ class TokensIterator(Iterator[Token]):
 def parse_var_declaration(tokens: TokensIterator) -> s.VarDeclaration:
     """Parses a variable declaration from the given tokens.
 
-    varDec = 'var' type varName (',' varName)';'
+    varDec = 'var' type varName (',' varName) ';'
 
     Args:
         tokens: The iterator of tokens.
@@ -83,7 +76,7 @@ def parse_var_declaration(tokens: TokensIterator) -> s.VarDeclaration:
 def parse_class_var_declaration(tokens: TokensIterator) -> s.ClassVarDeclaration:
     """Parses a class variable declaration from the given tokens.
 
-    classVarDec = ('static'|'field') type varName(',' varName)*';'
+    classVarDec = ('static' | 'field') type varName(',' varName)* ';'
 
     Args:
         tokens: The iterator of tokens.
@@ -150,10 +143,10 @@ def parse_subroutine_declaration(tokens: TokensIterator) -> s.SubroutineDeclarat
     Returns:
         The parsed subroutine declaration.
     """
-    type_, returns, name = next(tokens).value, next(tokens).value, next(tokens).value
+    kind, returns, name = next(tokens).value, next(tokens).value, next(tokens).value
     parameters = parse_parameter_list(tokens)
     return s.SubroutineDeclaration(
-        kind=type_,
+        kind=kind,
         returns=returns,
         name=name,
         parameters=parameters,
@@ -164,7 +157,7 @@ def parse_subroutine_declaration(tokens: TokensIterator) -> s.SubroutineDeclarat
 def parse_class(tokens: TokensIterator) -> s.Class:
     """Parses a class from the given tokens.
 
-    class = 'class' className '{'classVarDec* subroutineDec*'}'
+    class = 'class' className '{' classVarDec* subroutineDec* '}'
 
     Args:
         tokens: The iterator of tokens.
@@ -173,7 +166,7 @@ def parse_class(tokens: TokensIterator) -> s.Class:
         The parsed class.
     """
     tokens.skip("class")
-    class_name, class_vars, subroutines = next(tokens).value, [], []
+    name, class_vars, subroutines = next(tokens).value, [], []
     tokens.skip("{")
     while tokens.peek().value != "}":
         if tokens.peek().value in {"static", "field"}:
@@ -181,7 +174,7 @@ def parse_class(tokens: TokensIterator) -> s.Class:
         else:
             subroutines.append(parse_subroutine_declaration(tokens))
     tokens.skip("}")
-    return s.Class(name=class_name, class_vars=class_vars, subroutines=subroutines)
+    return s.Class(name=name, class_vars=class_vars, subroutines=subroutines)
 
 
 def parse_expressions(tokens: TokensIterator) -> s.Expressions:
@@ -215,7 +208,6 @@ def parse_index(tokens: TokensIterator) -> s.Expression | None:
 
     Returns:
         The parsed index.
-
     """
     if tokens.peek().value != "[":
         return None
@@ -228,7 +220,7 @@ def parse_index(tokens: TokensIterator) -> s.Expression | None:
 def parse_let_statement(tokens: TokensIterator) -> s.LetStatement:
     """Parses a let statement from the given tokens.
 
-    letStatement = 'let' varName(index) '=' expression';'
+    letStatement = 'let' varName(index) '=' expression ';'
 
     Args:
         tokens: The iterator of tokens.
@@ -249,8 +241,8 @@ def parse_let_statement(tokens: TokensIterator) -> s.LetStatement:
 def parse_subroutine_call(cls, tokens: TokensIterator, name=None):
     """Parses a subroutine call from the given tokens.
 
-    subroutineCall = subroutineName'('expressionList')'|
-                     (className|varname)'.'subroutineName'('expressionList')'
+    subroutineCall = subroutineName '(' expressionList ')' |
+                     (className|varname) '.' subroutineName '(' expressionList ')'
 
     Args:
         tokens: The iterator of tokens.
@@ -269,7 +261,7 @@ def parse_subroutine_call(cls, tokens: TokensIterator, name=None):
 def parse_do_statement(tokens: TokensIterator) -> s.DoStatement:
     """Parses a do statement from the given tokens.
 
-    doStatement = 'do' subroutineCall';'
+    doStatement = 'do' subroutineCall ';'
 
     Args:
         tokens: The iterator of tokens.
@@ -283,7 +275,7 @@ def parse_do_statement(tokens: TokensIterator) -> s.DoStatement:
 def parse_return_statement(tokens: TokensIterator) -> s.ReturnStatement:
     """Parses a return statement from the given tokens.
 
-    returnStatement = 'return' expression?';'
+    returnStatement = 'return' expression? ';'
 
     Args:
         tokens: The iterator of tokens.
@@ -299,7 +291,7 @@ def parse_return_statement(tokens: TokensIterator) -> s.ReturnStatement:
 def parse_while_statement(tokens: TokensIterator) -> s.WhileStatement:
     """Parses a while statement from the given tokens.
 
-    whileStatement = 'while' '('expression')''{'statements'}'
+    whileStatement = 'while' '(' expression ')' '{' statements '}'
 
     Args:
         tokens: The iterator of tokens.
@@ -308,17 +300,17 @@ def parse_while_statement(tokens: TokensIterator) -> s.WhileStatement:
         The parsed while statement.
     """
     tokens.skip("(")
-    expression = parse_expression(tokens)
+    test = parse_expression(tokens)
     tokens.skip(")", "{")
-    statements = parse_statements(tokens)
+    body = parse_statements(tokens)
     tokens.skip("}")
-    return s.WhileStatement(test=expression, body=statements)
+    return s.WhileStatement(test=test, body=body)
 
 
 def parse_if_statement(tokens: TokensIterator) -> s.IfStatement:
     """Parses an if statement from the given tokens.
 
-    ifStatement = 'if' '('expression')''{'statements'}' ('else' '{'statements'}')?
+    ifStatement = 'if' '('expression')''{'statements'}' ('else' '{'statements '}')?
 
     Args:
         tokens: The iterator of tokens.
@@ -327,16 +319,16 @@ def parse_if_statement(tokens: TokensIterator) -> s.IfStatement:
         The parsed if statement.
     """
     tokens.skip("(")
-    expression = parse_expression(tokens)
+    test = parse_expression(tokens)
     tokens.skip(")", "{")
-    statements_if = parse_statements(tokens)
+    if_ = parse_statements(tokens)
     tokens.skip("}")
     if tokens.peek().value != "else":
-        return s.IfStatement(test=expression, if_=statements_if, else_=None)
+        return s.IfStatement(test=test, if_=if_, else_=None)
     tokens.skip("else", "{")
-    statements_else = parse_statements(tokens)
+    else_ = parse_statements(tokens)
     tokens.skip("}")
-    return s.IfStatement(test=expression, if_=statements_if, else_=statements_else)
+    return s.IfStatement(test=test, if_=if_, else_=else_)
 
 
 def parse_statements(tokens: TokensIterator) -> s.Statements:
@@ -350,7 +342,7 @@ def parse_statements(tokens: TokensIterator) -> s.Statements:
     Returns:
         The parsed statements.
     """
-    statements_list = s.Statements([])
+    statements = s.Statements([])
     builders: Mapping[str, Callable[[TokensIterator], s.Statement]] = {
         "let": parse_let_statement,
         "do": parse_do_statement,
@@ -360,8 +352,8 @@ def parse_statements(tokens: TokensIterator) -> s.Statements:
     }
     while tokens.peek().value != "}":
         if (token_value := next(tokens).value) != ";":
-            statements_list.append(builders[token_value](tokens))
-    return statements_list
+            statements.append(builders[token_value](tokens))
+    return statements
 
 
 def parse_term(tokens: TokensIterator) -> s.Term:

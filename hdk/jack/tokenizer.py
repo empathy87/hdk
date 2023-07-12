@@ -16,7 +16,7 @@ class TokenType(Enum):
     IDENTIFIER = 4
 
 
-_KEYWORDS: set[str] = {
+KEYWORDS: set[str] = {
     "class",
     "method",
     "function",
@@ -40,7 +40,7 @@ _KEYWORDS: set[str] = {
     "void",
 }
 
-_SYMBOLS: set[str] = {
+SYMBOLS: set[str] = {
     "{",
     "}",
     "(",
@@ -81,7 +81,7 @@ def tokenize(text: str) -> Iterator[Token]:
     """
     current_token = ""
     for char in text:
-        if char in _SYMBOLS:
+        if char in SYMBOLS:
             if current_token != "":
                 yield build_token(current_token)
             yield build_token(char)
@@ -108,9 +108,9 @@ def build_token(token: str) -> Token:
     Returns:
         The token object representing the given string.
     """
-    if token in _SYMBOLS:
+    if token in SYMBOLS:
         return Token(TokenType.SYMBOL, token)
-    if token in _KEYWORDS:
+    if token in KEYWORDS:
         return Token(TokenType.KEYWORD, token)
     if token.isdigit():
         return Token(TokenType.INTEGER_CONSTANT, token)
