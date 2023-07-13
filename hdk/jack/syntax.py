@@ -1,4 +1,4 @@
-"""Defines classes that represent different types of Jack syntax structures.!!!"""
+"""Defines classes that represent different types of Jack syntax structures."""
 from __future__ import annotations
 
 import abc
